@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Decathlon Slot Finding
 // @namespace    http://tampermonkey.net/
-// @version      1.1
-// @description  Auto-redirect from activity list to dates page and apply filters
+// @version      1.2
+// @description  Auto-redirect from activity list to dates page, apply filters, and offer off-peak switch
 // @author       Eeshan
 // @match        https://activities.decathlon.co.uk/en-GB/c/pickleball-canada-water*
 // @match        https://activities.decathlon.co.uk/en-GB/sport-activities/dates/*
@@ -12,6 +12,9 @@
 
 (function() {
     'use strict';
+
+    const NORMAL_KEY = 'decathlonNormalDatesUrl';
+    const OFF_PEAK_KEY = 'decathlonOffPeakDatesUrl';
 
     // Check which page we're on
     const isDatesPage = window.location.pathname.includes('/sport-activities/dates/');
@@ -47,36 +50,63 @@
      * Redirect logic for the activity list page
      */
     function runRedirectLogic() {
-        function findAndRedirect() {
+        function findLinks() {
             // Pattern to match activity details URLs
             const pattern = /^https:\/\/activities\.decathlon\.co\.uk\/en-GB\/sport-activities\/details\/(\d+)$/;
 
             // Find all links on the page
             const links = document.querySelectorAll('a[href]');
 
-            // Search for the first link with "Play PICKLEBALL" in its text
+            let normalId = null;
+            let offPeakId = null;
+
             for (const link of links) {
                 const href = link.href;
                 const linkText = link.textContent || link.innerText || '';
-
-                // Check if this link matches the URL pattern AND contains "Play PICKLEBALL" and not "OFF PEAK"
                 const match = href.match(pattern);
-                if (match && linkText.includes('Play PICKLEBALL') && !linkText.includes('OFF PEAK')) {
-                    const activityId = match[1];
-                    const datesUrl = `https://activities.decathlon.co.uk/en-GB/sport-activities/dates/${activityId}`;
-                    console.log(`Found link with "Play PICKLEBALL": ${linkText.trim()}`);
-                    console.log(`Activity ID: ${activityId}`);
-                    console.log(`Redirecting to: ${datesUrl}`);
 
-                    // Redirect to the dates page
-                    window.location.href = datesUrl;
-                    return true; // Indicate we found and redirected
+                if (match && linkText.includes('Play PICKLEBALL')) {
+                    if (linkText.includes('OFF PEAK')) {
+                        if (!offPeakId) {
+                            offPeakId = match[1];
+                            console.log(`Found OFF PEAK link: ${linkText.trim()} (ID: ${offPeakId})`);
+                        }
+                    } else {
+                        if (!normalId) {
+                            normalId = match[1];
+                            console.log(`Found normal link: ${linkText.trim()} (ID: ${normalId})`);
+                        }
+                    }
                 }
+            }
+
+            return { normalId, offPeakId };
+        }
+
+        function findAndRedirect() {
+            const { normalId, offPeakId } = findLinks();
+
+            if (normalId) {
+                const datesUrl = `https://activities.decathlon.co.uk/en-GB/sport-activities/dates/${normalId}`;
+                localStorage.setItem(NORMAL_KEY, datesUrl);
+
+                if (offPeakId) {
+                    const offPeakUrl = `https://activities.decathlon.co.uk/en-GB/sport-activities/dates/${offPeakId}`;
+                    localStorage.setItem(OFF_PEAK_KEY, offPeakUrl);
+                    console.log(`Saved OFF PEAK dates URL: ${offPeakUrl}`);
+                } else {
+                    localStorage.removeItem(OFF_PEAK_KEY);
+                }
+
+                console.log(`Redirecting to: ${datesUrl}`);
+                window.location.href = datesUrl;
+                return true; // Indicate we found and redirected
             }
 
             console.log('No link found containing "Play PICKLEBALL"');
             return false; // No matching link found
         }
+
         // Function to wait for content to load with retries
         function waitForContentAndRedirect() {
             let attempts = 0;
@@ -183,6 +213,49 @@
         }
 
         /**
+         * Shows a button top-right that jumps to the counterpart dates page
+         * (peak <-> off-peak), based on which one the current page matches.
+         */
+        function createSwitchButton() {
+            if (document.getElementById('peak-switch')) return;
+
+            const normalUrl = localStorage.getItem(NORMAL_KEY);
+            const offPeakUrl = localStorage.getItem(OFF_PEAK_KEY);
+            const currentUrl = window.location.href;
+
+            let targetUrl = null;
+            let label = null;
+
+            if (currentUrl === offPeakUrl && normalUrl) {
+                targetUrl = normalUrl;
+                label = 'Switch to PEAK';
+            } else if (currentUrl === normalUrl && offPeakUrl) {
+                targetUrl = offPeakUrl;
+                label = 'Switch to OFF PEAK';
+            }
+
+            if (!targetUrl) {
+                console.log('No counterpart URL stored/matched, skipping button.');
+                return;
+            }
+
+            const btn = document.createElement('button');
+            btn.id = 'peak-switch';
+            btn.textContent = label;
+            btn.style.cssText = `
+                position: fixed; top: 20px; right: 20px; z-index: 9999;
+                background: #007dbc; color: white; border: none;
+                padding: 8px 14px; border-radius: 6px; font-family: sans-serif;
+                font-size: 12px; font-weight: bold; cursor: pointer;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            `;
+            btn.addEventListener('click', () => {
+                window.location.href = targetUrl;
+            });
+            document.body.appendChild(btn);
+        }
+
+        /**
          * Filters visibility of app-timeslot elements based on UI selection
          */
         function update() {
@@ -210,6 +283,7 @@
         window.addEventListener('load', () => {
             // Give Angular time to render
             createFilterUI();
+            createSwitchButton();
             setTimeout(clickAndWait, 1000);
         });
     }
