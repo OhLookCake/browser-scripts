@@ -1,0 +1,9 @@
+/*** Show X on tabs when hovering, without having to switch to the tab.
+ * This is normally hidden when too many tabs are open ***/
+
+.tabbrowser-tab:not([pinned]) .tab-close-button {
+  display: none !important
+}
+.tabbrowser-tab:not([pinned]):hover .tab-close-button {
+  display: inline-flex !important
+}

@@ -1,0 +1,24 @@
+/*** Bookmarks bar and toolbar size + spacing ***/
+
+/* Make Bookmarks Toolbar bigger by increasing font-size */
+#personal-bookmarks .bookmark-item .toolbarbutton-text {
+ font-size: 9pt !important;
+}
+
+/* tabs toolbar */
+#navigator-toolbox #TabsToolbar {
+ font-size: 9pt !important;
+}
+
+/* Add blank space between Bookmarks and Tabs bars */
+/*
+#personal-bookmarks {
+  margin-bottom: 6px !important;
+}
+*/
+
+/* Add margin to ALL bookmark icons */
+#PlacesToolbarItems .toolbarbutton-text { margin-left: 5px !important; }
+
+/* Add margin only to FOLDER bookmark icons */
+#PlacesToolbarItems .bookmark-item[container] .toolbarbutton-text { margin-left: 5px !important; }

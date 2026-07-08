@@ -1,0 +1,14 @@
+/*** General ***/
+#context-back, #context-forward, #context-reload, #context-sep-navigation,
+#context-bookmarkpage, #context-navigation, #context-savepage, #context-pocket,
+#context-navigation, #screenshots_mozilla_org-menuitem-_create-screenshot, #screenshots_mozilla_org_create-screenshot
+{
+  display: none !important;
+}
+
+
+/*** Links ***/
+#context-bookmarklink
+{
+  display: none !important;
+}

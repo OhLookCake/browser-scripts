@@ -1,0 +1,22 @@
+@import url(chrome/hide_image_context_items.css);
+@import url(chrome/hide_general_context_items.css);
+@import url(chrome/toolbar_icon_size.css);
+/*@import url(chrome/tab_borders.css);*/
+@import url(chrome/playing_icon.css);
+@import url(chrome/show_x_on_tabs_hover.css);
+
+
+/*Sidebery related */
+@import url(chrome/hide_normal_tabs.css);
+/*@import url(chrome/dynamic_sidebar.css);*/
+#sidebar-box{
+  position: relative;
+  min-width: 50px !important;
+  max-width: 1000px !important;
+}
+
+
+/* Tab Title Text size */
+.tab-text.tab-label{ font-size: 14px; }
+
+
