@@ -1,0 +1,27 @@
+/* ==UserStyle==
+@name         Wikipedia -> Atkinson Hyperlegible
+@namespace    github.com/eeshanmalhotra/browser-scripts
+@version      1.0
+@description  Force Wikipedia to use Atkinson Hyperlegible
+@author       Eeshan
+==/UserStyle== */
+
+@-moz-document domain("wikipedia.org") {
+    body,
+    .mw-body,
+    .vector-body,
+    .mw-parser-output,
+    .vector-feature-language-in-header-enabled {
+        font-family:
+            "Atkinson Hyperlegible",
+            "Atkinson Hyperlegible Next",
+            sans-serif !important;
+    }
+
+    input,
+    textarea,
+    select,
+    button {
+        font-family: inherit !important;
+    }
+}

@@ -1,0 +1,49 @@
+/* ==UserStyle==
+@name          Amazon Video Cleaner
+@namespace      github.com/openstyles/stylus
+@version        1.0.0
+@description    A new userstyle
+@author         Me
+==/UserStyle== */
+@-moz-document url-prefix("https://www.amazon.co.uk/gp/video") {
+    /* Hide XRay */
+    .xrayQuickView {
+        display: none !important;
+    }
+
+
+    /* Hide overlay: match the div whose next sibling has
+       .atvwebplayersdk-loading-overlay as a DIRECT child,
+       not just anywhere in its subtree */
+    div:has(+ div > .atvwebplayersdk-loading-overlay) {
+        display: none !important;
+    }
+	
+	/* Dim the top bar (episode title etc.) */
+   div[style*="grid-area: 1 / 1 / 2 / 5"] {
+	   opacity: 0.2 !important;
+    }
+	
+	/* Fallback alternative for the same thing */
+	div:has(#atvwebplayersdk-close-player-button):has(.atvwebplayersdk-title-text):not(:has(> div:has(#atvwebplayersdk-close-player-button):has(.atvwebplayersdk-title-text))) {
+		opacity: 0.15 !important;
+	}
+	
+	
+	/* Scrubber / time bar */
+    div:has(> #atvwebplayersdk-time-indicator):has(> #atvwebplayersdk-time-remaining-indicator) {
+		opacity: 0.3 !important;
+	}
+	
+
+	/* Pause and skip buttons */
+	div:has(> div > #atvwebplayersdk-skip-backward-button):has(> div > #atvwebplayersdk-play-pause-button):has(> div > #atvwebplayersdk-skip-forward-button) {
+		opacity: 0.3 !important;
+	}
+	
+	/* Next episode button */
+	div:has(> #atvwebplayersdk-next-episode-button) {
+		opacity: 0.3 !important;
+	}
+	
+}
