@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Decathlon Slot Finding
-// @namespace    http://tampermonkey.net/
+// @namespace    violentmonkey.github.io
 // @version      1.2
 // @description  Auto-redirect from activity list to dates page, apply filters, and offer off-peak switch
-// @author       Eeshan
+// @author       ohlookcake
 // @match        https://activities.decathlon.co.uk/en-GB/c/pickleball-canada-water*
 // @match        https://activities.decathlon.co.uk/en-GB/sport-activities/dates/*
 // @match        https://activities.decathlon.co.uk/en-GB/sport-activities/details/*

@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Channel 4 - Disable Video Overlay
-// @namespace    http://violentmonkey.net/
+// @namespace    violentmonkey.github.io
 // @version      1.0
 // @description  Removes the dark overlay on the Channel 4 video player while keeping media controls visible
-// @author       You
+// @author       ohlookcake
 // @match        https://www.channel4.com/*
 // @grant        none
 // @run-at       document-end

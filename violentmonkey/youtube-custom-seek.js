@@ -1,7 +1,8 @@
 // ==UserScript==
 // @name         YouTube 3s Seek with U / O
-// @namespace    http://tampermonkey.net/
+// @namespace    violentmonkey.github.io
 // @version      1.0
+// @author       ohlookcake
 // @description  Rewind/forward YouTube video by 3 seconds using U and O
 // @match        https://www.youtube.com/*
 // @grant        none

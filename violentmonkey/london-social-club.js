@@ -1,7 +1,8 @@
 // ==UserScript==
-// @name         Hide Archived Events - LondonSocialClub
-// @namespace    eeshan.pages.dev
+// @name         LondonSocialClub - Hide Archived Events
+// @namespace    violentmonkey.github.io
 // @version      1.0
+// @author       ohlookcake
 // @description  Hides posts flaired "Archived" (past events) on r/LondonSocialClub old-reddit-style view
 // @match        https://www.reddit.com/r/LondonSocialClub
 // @match        https://www.reddit.com/r/LondonSocialClub/
