@@ -1,0 +1,112 @@
+
+#root.root {--general-margin: 2px;}
+#root.root {--tabs-height: 42px;}
+#root.root {--tabs-margin: 2px;}
+#root.root {--tabs-inner-gap: 8px;}
+
+/* ---- General spacing tweaks, etc. ---- */
+
+
+
+#root.root {--tabs-pinned-height: 40px;}
+#root.root {--tabs-pinned-width: 48px;}
+ /* gap on either side of the favicon */
+#root.root {--tabs-activated-shadow: 0 0px 1px 1px rgba(250,250,250,0.5), inset 0 0 0 1px rgba(255,255,255,0.031);}
+
+
+/* Tab color & opacity */
+#root.root {--tabs-color-layer-opacity: 0.25;}
+
+#root.root {--tabs-normal-bg: rgba(0,0,0,0.141);}
+#root.root {--tabs-normal-fg: rgb(171,171,174);}
+
+#root.root {--tabs-activated-color-layer-opacity: 0.6;}
+#root.root {--tabs-activated-bg: rgba(211,211,211,0.341);}
+#root.root {--tabs-activated-fg: rgb(251,251,254);}
+#root.root {--tabs-activated-shadow: 0 0px 1px 1px rgba(250,250,250,0.5), inset 0 0 0 1px rgba(255,255,255,0.031);}
+
+/* Indent */
+#root.root {--tabs-indent:6px;}
+#root.root {--tabs-lvl-opacity: 0.5;}
+
+/* Context menu */
+#root.root {--ctx-menu-padding: 0.3em;}
+#root.root {--ctx-menu-opt-padding: 0.3em;}
+#root.root {--ctx-menu-icon-opt-height: 30px;}
+
+/* Nav bar (bar on top of the sidebar) */
+#root.root {--nav-btn-fg: #ccc;}
+#root.root {--nav-delimiter-size: 1em;}
+#root.root {--nav-hidden-btn-border-radius: 0.5em;}
+#root.root {--nav-btn-width: 46px;}
+#root.root {--nav-btn-height: 46px;}
+
+/* New tab button (+) */
+#root.root {--ntb-btn-height: 50px;}
+#root.root {--ntb-padding: 0px;}
+
+/* Audio button */
+#root.root {--tabs-audio-btn-width: 20px;}
+
+/* Close button X */
+
+	/* Make the text use the extra space created by removing the X */
+	.Tab {
+  	width: 120%;
+	}
+
+	/* Move the X to the left, an d ateeny bit lower to overlap the favicon */
+	.Tab .close {
+  	left: 1px;
+		top: 3px;
+	}
+	
+	/* But for parent tabs, move it further to ther right*/
+	.Tab[data-parent="true"] .close {
+  	left: 26px;
+		top: 3px;
+	}
+
+	/* Hide X normally */
+	.Tab .close svg {
+  	opacity: 0.0;
+	  transition: all .1s ease-in-out;
+  	transform-origin: center;
+	}
+
+	/* When hovering on the tab, make the X visible*/
+	.Tab:hover .close svg {
+  	background-color: #363636;
+	  opacity: .9;
+	  border-radius: 66px; 
+	  transition:  all .1s ease-in-out;
+	  transform-origin: center;
+	}
+
+	/* When hovering over the X itself, make it even more prominent */
+	.Tab .close:hover svg{	
+	  background-color: white;
+	  transition:  opacity .1s ease-in-out;
+  	fill: black;
+	}
+
+
+
+/* Tab box customisation */
+#root.root {--tabs-border-radius: 0.4em;}
+
+/* Favicon size */
+.Tab .fav img {
+  height: 18px;
+  width: 18px;
+	left: 1px
+}
+
+/* Make pinned tabs stay in a row */
+.PinnedTabsBar { flex-wrap: nowrap!important; }
+
+
+/* wut */
+.Tab[title*=""] { opacity: 0.75; }
+
+
