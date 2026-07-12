@@ -1,0 +1,178 @@
+/* ==UserStyle==
+@name         Apterous Modern
+@namespace    violentmonkey.github.io
+@version      1.0
+@description  Clean up and modernise the whole look of apterous
+@author       ohlookcake
+==/UserStyle== */
+
+@-moz-document domain("apterous.org"){
+	/* General beautification */
+
+	:root {
+		color-scheme: light dark;
+	}
+
+	html {
+		--font-family: "Atkinson Hyperlegible", "Verdana", "Helvetica", "Arial", serif;
+		background-color: #444 !important;
+		font-size: 30px;
+	}
+
+	* {
+		font-family: var(--font-family) !important;
+	}
+
+	button {
+		border: 1px solid #888;
+		border-radius: 4px;
+	}
+
+	.letters-selection {
+		--font-family: "Futura Hv BT";
+		transform: scaleY(1.05);
+	}
+
+	textarea.notes-area{
+		height:150px;
+		width: 450px;
+	}
+	div.collector.numbers-method-notes-after textarea {
+		width: 350px;
+	}
+
+	/* Light mode only */
+
+	.light-mode button {
+		background-color: white;
+	}
+
+	.light-mode button[hover],
+	.light-mode button:hover {
+		background-color: #f0f0f0;
+	}
+
+	.light-mode button[disabled],
+	.light-mode button:disabled{
+		background-color: #c0bdbd;
+		color: #999;  
+	}
+
+	/* Letters */
+	.letters-selection-empty,
+	.letters-selection-letter,
+	.letters-selection-slot,
+	.letters-selection {
+		background-color: white !important;
+		color: #113377 !important;
+	}
+	.letters-selection-empty {
+		background-color: white !important;
+		color: white !important;
+	}
+
+	/* Numbers rounds*/
+	/* Pre-reveal */
+	.light-mode .numbers-round-target,
+	.light-mode .numbers-round-worker-list li {
+		background-color: white !important;
+		color: #fff !important;
+	}
+
+
+	/* Post-reveal - this must be AFTER the pre- section, so it can overrule it */
+	.light-mode .numbers-round-target-revealed,
+	.light-mode .numbers-round-worker-revealed,
+	.light-mode li.numbers-round-worker-revealed {
+		background-color: white !important;
+		color: #113377 !important;
+	}
+
+
+	/* Summary page */
+	.light-mode .game-summary-meta,
+	.light-mode .game-summary-points,
+	.light-mode .game-summary-declaration-pick {
+		background-color: #fff !important;
+	}
+
+
+
+	/* Dark mode only */
+
+	.dark-mode button {
+		background-color: #555;
+	}
+
+	.dark-mode button[hover],
+	.dark-mode button:hover {
+		background-color: #777;
+	}
+
+	.dark-mode button:disabled,
+	.dark-mode button[disabled] {
+		background-color: #aaa;
+		color: #eee;
+	}
+
+	/* Letters */
+	.letters-selection-empty,
+	.letters-selection-letter,
+	.letters-selection-slot,
+	.letters-selection {
+		background-color: white !important;
+		color: #113377 !important;
+	}
+	.letters-selection-empty {
+		background-color: white !important;
+		color: white !important;
+	}
+
+	/* Numbers rounds*/
+	/* Pre-reveal */
+	.dark-mode .numbers-round-target,
+	.dark-mode .numbers-round-worker-list li {
+		background-color: white !important;
+		color: #fff !important;
+	}
+
+
+	/* Post-reveal - this must be AFTER the pre- section, so it can overrule it */
+	.dark-mode .numbers-round-target-revealed,
+	.dark-mode .numbers-round-worker-revealed,
+	.dark-mode li.numbers-round-worker-revealed {
+		background-color: white !important;
+		color: #113377 !important;
+	}
+
+
+	/* Summary page */
+	.dark-mode .game-summary-meta,
+	.dark-mode .game-summary-points,
+	.dark-mode .game-summary-declaration-pick {
+		background-color: #222 !important;
+	}
+
+
+	.dark-mode .timer-bar,
+	.dark-mode .timer-bar-fill {
+		border: 1px solid #dddddd !important;
+	}
+
+	.dark-mode .page_content {
+		background-color: #333 !important
+	}
+
+
+	/* Locked letters and numbers */
+	.letters-selection-letter.letters-selection-locked,
+	li.numbers-round-worker-locked.numbers-round-worker-revealed,
+	.numbers-round-worker-locked {
+		background-color: #b10000 !important;
+		color: white !important;
+	}
+
+	button[disabled].numbers-round-worker-locked{
+		background-color: #ffafaf !important;
+	}
+}

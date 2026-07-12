@@ -1,0 +1,146 @@
+/* ==UserStyle==
+@name           Youtube results page cleaner
+@namespace      github.com/openstyles/stylus
+@version        1.0.0
+@description    Youtube results page cleaner
+@author         ohlookcake
+
+==/UserStyle== */
+@-moz-document url-prefix("https://www.youtube.com/results") {
+
+	:root {
+		--thumbnailwidth: 320px;
+		--playlistwidth: 48%;
+	}
+
+	/* Make videos go row wise */
+	#contents > ytd-item-section-renderer > #contents {
+		display: flex;
+		flex-wrap: wrap;
+	}
+
+	/* Make each video container narrow */
+	ytd-video-renderer > #dismissible {
+		padding-right: 2em;
+		padding-bottom: 3em;
+		display: flex;
+		flex-direction: column !important;
+		width: var(--thumbnailwidth);
+	}
+	
+	.style-scope .ytd-item-section-renderer{
+		margin-top: 0;
+	}
+
+
+	/******** Subsections **********/
+	/* Sections like 'Channels New to You', Previously watched, etc. */
+		ytd-shelf-renderer {
+			width: 100% !important;
+			overflow-y: scroll;
+			overflow-x: scroll;
+			display: flex;
+			flex-direction: row;
+
+		}
+	
+		/* Make the subsection contents flow horizontally */
+		ytd-shelf-renderer > #dismissible > #contents > ytd-vertical-list-renderer > #items{
+			display: flex ! important;
+			flex-direction: row !important;
+
+		}
+
+		/* Subheader titles like 'Channels New to You', Previously watched,  etc */
+		.grid-subheader.ytd-shelf-renderer {
+		  margin-top: 6px;
+		}
+	
+		/* border before & after the section */		
+		ytd-shelf-renderer.ytd-item-section-renderer{
+			border-top: 0px solid var(--yt-spec-10-percent-layer);
+			border-bottom: 0px solid var(--yt-spec-10-percent-layer);
+			
+		}
+	/******************************/
+	
+
+	/*********** Playlists ***********/
+		ytd-playlist-renderer {
+			width: var(--playlistwidth) !important;
+			height: 100px !important;
+			flex-direction: column !important;
+		}
+	
+		.yt-lockup-view-model-wiz--horizontal {
+			height: fit-content !important;
+		}
+
+		#content.ytd-playlist-renderer {
+			overflow: unset !important;
+		}
+
+		yt-lockup-view-model.ytd-item-section-renderer {
+			width: var(--playlistwidth) !important;
+		}
+	/******************************/
+	
+	
+	ytd-radio-renderer {
+		width: var(--thumbnailwidth);
+		flex-direction: column !important;
+	}
+
+	yt-did-you-mean-renderer {
+		width: var(--thumbnailwidth);
+	}
+
+	ytd-video-renderer > #dismissible > ytd-thumbnail {
+		width: var(--thumbnailwidth);
+	}
+
+	ytd-video-renderer > #dismissible > ytd-thumbnail > .text-wrapper {
+		max-width: none !important;
+	}
+
+
+	ytd-two-column-search-results-renderer {
+		max-width: none !important;
+	}
+
+	#primary.style-scope.ytd-two-column-search-results-renderer {
+		max-width: none !important;
+	}
+
+	/* If there's a channel in the results, make it take up a whole row */
+	ytd-channel-renderer {
+		max-width: none !important;
+		width: 90%;
+		height: 200px;
+	}
+
+	/* Make the text under each video behave nicely */
+	.metadata-snippet-container-one-line.ytd-video-renderer {
+		white-space: normal !important;
+	}
+
+	/* Hide Shorts in search results */
+	ytd-reel-shelf-renderer, grid-shelf-view-model {
+		display: none !important;
+	}
+	
+	/******** Hide useless features ********/
+	
+		/* Hide annoying metadata/chapter annotations */
+		ytd-video-renderer > #dismissible > .text-wrapper.style-scope.ytd-video-renderer > #expandable-metadata {
+			display: none;
+		}
+
+		/* Hide badges below videos */
+		#badges.ytd-video-renderer{
+			display: none;
+		}
+
+	/***********************************/
+	
+}

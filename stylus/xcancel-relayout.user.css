@@ -1,0 +1,28 @@
+/* ==UserStyle==
+@name           xcancel relayout
+@namespace      github.com/openstyles/stylus
+@version        1.0.0
+@description    xcancel relayout
+@author         ohlookcake
+==/UserStyle== */
+
+
+@-moz-document domain("xcancel.com") {
+    /* Main container adjustments */
+    .container,
+    [class*="profile-tabs"] {
+        max-width: 1200px !important;
+		align-items: unset;
+	}
+	
+	
+	div.profile-tab{
+		max-width: 25% !important;
+	}
+	
+	div.timeline-container{
+		max-width: 75% !important;
+		align-content: unset;
+	}
+	
+}

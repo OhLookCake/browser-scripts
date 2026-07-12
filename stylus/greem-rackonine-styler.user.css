@@ -1,0 +1,32 @@
+/* ==UserStyle==
+@name           Greem Rackonine Dark mode styler
+@namespace      github.com/openstyles/stylus
+@version        1.0.0
+@description    Greem Rackonine Dark mode styler
+@author         ohlookcake
+==/UserStyle== */
+@-moz-document url("https://greem.co.uk/rackonine/") {
+    body {
+        --font-family: "Atkinson Hyperlegible", "Verdana", "Helvetica", "Arial", serif;
+        background-color: #454545;
+    }
+
+    div.lettersrack {
+        --font-family: "Futura Hv BT";
+        background-color: #eeeeee;
+        border: 0.5vmin groove silver;
+        border-radius: 0.5vw;
+    }
+
+    div.charactercell {
+        --font-family: "Futura Hv BT";
+        background-color: #fff;
+        color: #113377;
+    }
+
+
+
+    div.targetcell {
+        background-color: #fff;
+    }
+}

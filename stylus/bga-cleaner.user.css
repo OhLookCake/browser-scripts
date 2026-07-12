@@ -1,0 +1,72 @@
+/* ==UserStyle==
+@name           BGA simplified
+@namespace      bga-simple
+@version        1
+@description    Simple tweaks for boardgamearena
+@author         ohlookcake
+@license        MIT
+@preprocessor	stylus
+
+}
+==/UserStyle==*/
+@-moz-document url("https://boardgamearena.com/lobby"),
+url("https://boardgamearena.com/welcome"),
+url("https://boardgamearena.com/"), url("https://boardgamearena.com")
+{
+
+    /* Dark background*/
+    body, .gamestart_overlay {
+        background-color: #444 !important;
+    }
+
+    .pagesection__content {
+        background-color: #4f4f4f !important;
+    }
+
+    .pageheader {
+        background-color: #bbb !important;
+    }
+
+    /* Reduce saturation of game box images */
+    img .gamebox,
+    .game_box_image_wrap,
+    .emblempremium_big {
+        filter: saturate(70%) !important;
+    }
+
+    /* Lighter text for dark background */
+    .gamename {
+        color: #eee !important;
+    }
+    .gamename:active,
+    .gamename:hover {
+        color: #444 !important;
+    }
+
+    .pagesection__title,
+    .bgabutton_blue,
+    .bgabutton_red{
+        color: #eee !important;
+    }
+
+
+    /* Welcome page stuff */
+    .text-bga-gray-78 {
+        color: #222 !important;
+    }
+    .text-bga-gray-171 {
+        color: #222 !important;
+    }
+}
+
+
+
+
+@-moz-document url("https://boardgamearena.com/lobby"),
+url("https://boardgamearena.com/welcome"), regexp("https://boardgamearena.com.*carcassonne.*") {
+         /* Dark background*/
+    body, .gamestart_overlay {
+        background-color: #c3c3c3 !important;
+    }
+
+}
