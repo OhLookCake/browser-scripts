@@ -255,7 +255,7 @@
           ${metric('Rating movement', formatSigned(summary.ratingChange, 3), 'across rated changes')}
           ${metric('Average points', `${summary.avgPointsFor?.toFixed(1) || 'N/A'} / ${summary.avgPointsAgainst?.toFixed(1) || 'N/A'}`, 'for / against')}
           ${metric('Average margin', formatSigned(summary.avgMargin, 1), `points across ${summary.scoredGames} games`)}
-          ${metric('Close games', summary.closeRate === null ? 'N/A' : `${summary.closeGames} / ${summary.scoredGames}`, summary.closeRate === null ? '' : `${Math.round(summary.closeRate * 100)}% decided by 2 or fewer`)}
+          ${metric('Close games (≤2 pts)', summary.closeRate === null ? 'N/A' : `${summary.closeGames} (${Math.round(summary.closeRate * 100)}%)`)}
           ${metric('Best win streak', summary.bestWinStreak, `current ${streak}`)}
           ${metric('Recent form', `${summary.recentWins}-${summary.recentGames - summary.recentWins}`, `last ${summary.recentGames} games`)}
           ${metric('Events', summary.events, `${summary.pointsFor}-${summary.pointsAgainst} total points`)}
