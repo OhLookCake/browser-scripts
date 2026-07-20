@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Decathlon Slot Finding
 // @namespace    violentmonkey.github.io
-// @version      1.2
+// @version      1.3
 // @description  Auto-redirect from activity list to dates page, apply filters, and offer off-peak switch
 // @author       ohlookcake
 // @match        https://activities.decathlon.co.uk/en-GB/c/pickleball-canada-water*
@@ -139,6 +139,16 @@
         let clickCount = 0;
         const maxClicks = 15;
 
+        function matchesCurrentPage(storedUrl) {
+            if (!storedUrl) return false;
+
+            try {
+                return new URL(storedUrl).pathname === window.location.pathname;
+            } catch {
+                return false;
+            }
+        }
+
         /**
          * Logic for paginating through availability pages
          */
@@ -194,7 +204,10 @@
             const container = document.createElement('div');
             container.id = 'filter-overlay';
             const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            const hours = Array.from({length: 6}, (_, i) => (i + 16).toString().padStart(2, '0'));
+            const isOffPeak = matchesCurrentPage(localStorage.getItem(OFF_PEAK_KEY));
+            const firstHour = isOffPeak ? 9 : 16;
+            const hourCount = isOffPeak ? 7 : 6;
+            const hours = Array.from({length: hourCount}, (_, i) => (i + firstHour).toString().padStart(2, '0'));
             container.innerHTML = `
                 <div class="filter-column">
                     <div class="filter-title">Day</div>
@@ -221,15 +234,13 @@
 
             const normalUrl = localStorage.getItem(NORMAL_KEY);
             const offPeakUrl = localStorage.getItem(OFF_PEAK_KEY);
-            const currentUrl = window.location.href;
-
             let targetUrl = null;
             let label = null;
 
-            if (currentUrl === offPeakUrl && normalUrl) {
+            if (matchesCurrentPage(offPeakUrl) && normalUrl) {
                 targetUrl = normalUrl;
                 label = 'Switch to PEAK';
-            } else if (currentUrl === normalUrl && offPeakUrl) {
+            } else if (matchesCurrentPage(normalUrl) && offPeakUrl) {
                 targetUrl = offPeakUrl;
                 label = 'Switch to OFF PEAK';
             }
