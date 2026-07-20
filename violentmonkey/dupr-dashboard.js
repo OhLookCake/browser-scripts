@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DUPR Dashboard Performance Summary
 // @namespace    violentmonkey.github.io
-// @version      1.1
+// @version      1.3
 // @author       ohlookcake
 // @description  Loads every DUPR result and presents separate singles and doubles performance reports
 // @match        https://dashboard.dupr.com/*
@@ -159,6 +159,49 @@
     return best;
   }
 
+  function comparableEventName(name) {
+    return name.replace(/\s*\((Singles|Doubles)\)\s*$/i, '').trim().replace(/\s+/g, ' ').toLowerCase();
+  }
+
+  function likelySameEvent(first, second) {
+    if (first === second) return true;
+    let sharedLength = 0;
+    while (sharedLength < first.length && sharedLength < second.length && first[sharedLength] === second[sharedLength]) {
+      sharedLength++;
+    }
+
+    const sharedStart = first.slice(0, sharedLength).trimEnd();
+    const nextFirst = first[sharedStart.length] || '';
+    const nextSecond = second[sharedStart.length] || '';
+    const endsAtWordBoundary = (!nextFirst || /[^a-z0-9]/i.test(nextFirst)) &&
+      (!nextSecond || /[^a-z0-9]/i.test(nextSecond));
+    const coverage = sharedStart.length / Math.min(first.length, second.length);
+
+    return sharedStart.length >= 24 && coverage >= 0.8 && endsAtWordBoundary;
+  }
+
+  function countEvents(matches) {
+    const namesByDate = new Map();
+    for (const match of matches) {
+      const dateKey = `${match.date.getFullYear()}-${match.date.getMonth()}-${match.date.getDate()}`;
+      const names = namesByDate.get(dateKey) || new Set();
+      names.add(comparableEventName(match.eventName));
+      namesByDate.set(dateKey, names);
+    }
+
+    let count = 0;
+    for (const names of namesByDate.values()) {
+      const clusters = [];
+      for (const name of names) {
+        const cluster = clusters.find(group => group.some(existing => likelySameEvent(existing, name)));
+        if (cluster) cluster.push(name);
+        else clusters.push([name]);
+      }
+      count += clusters.length;
+    }
+    return count;
+  }
+
   function summarise(matches) {
     // DUPR supplies cards newest-first. Reverse source order for games on the same date.
     const chronological = [...matches].sort((a, b) => a.date - b.date || b.sourceIndex - a.sourceIndex);
@@ -166,7 +209,7 @@
     const scored = matches.filter(match => Number.isFinite(match.ownScore) && Number.isFinite(match.opponentScore));
     const deltas = matches.map(match => match.delta).filter(Number.isFinite);
     const margins = scored.map(match => match.ownScore - match.opponentScore);
-    const events = new Set(matches.map(match => match.eventName.replace(/\s*\((Singles|Doubles)\)\s*$/i, '')));
+    const eventCount = countEvents(matches);
     const monthly = new Map();
     const rated = chronological.filter(match => Number.isFinite(match.rating));
     const changed = chronological.filter(match => Number.isFinite(match.delta));
@@ -216,7 +259,7 @@
       bestWinStreak: longestStreak(chronological, true),
       currentStreak,
       currentResult,
-      events: events.size,
+      events: eventCount,
       biggestWin: scored.filter(match => match.won).reduce(byMargin, null),
       biggestLossByScore: scored.filter(match => !match.won).reduce(byLowestMargin, null),
       recentWins: chronological.slice(-10).filter(match => match.won).length,
