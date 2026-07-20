@@ -1,0 +1,453 @@
+// ==UserScript==
+// @name         DUPR Dashboard Performance Summary
+// @namespace    violentmonkey.github.io
+// @version      1.1
+// @author       ohlookcake
+// @description  Loads every DUPR result and presents separate singles and doubles performance reports
+// @match        https://dashboard.dupr.com/*
+// @run-at       document-idle
+// @grant        none
+// ==/UserScript==
+
+(function () {
+  'use strict';
+
+  const CHECK_DELAY_MS = 700;
+  const REQUIRED_STABLE_CHECKS = 4;
+  const MIN_SCROLL_RANGE = 100;
+  const MATCH_SELECTOR = '[match-id]';
+
+  function getScrollContainer() {
+    const root = document.scrollingElement || document.documentElement;
+    let best = root;
+    let bestRange = root.scrollHeight - root.clientHeight;
+
+    for (const element of document.querySelectorAll('main, [role="main"], div, section')) {
+      const style = getComputedStyle(element);
+      const range = element.scrollHeight - element.clientHeight;
+      const canScroll = /auto|scroll/.test(style.overflowY);
+
+      if (canScroll && range > bestRange && range >= MIN_SCROLL_RANGE) {
+        best = element;
+        bestRange = range;
+      }
+    }
+
+    return best;
+  }
+
+  function scrollHeight(element) {
+    return element === document.scrollingElement
+      ? Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)
+      : element.scrollHeight;
+  }
+
+  async function loadEverything() {
+    let stableChecks = 0;
+    let previousHeight = 0;
+    let previousContainer = null;
+
+    while (stableChecks < REQUIRED_STABLE_CHECKS) {
+      const container = getScrollContainer();
+      const heightBeforeScroll = scrollHeight(container);
+
+      if (container === document.scrollingElement) {
+        window.scrollTo({ top: heightBeforeScroll, behavior: 'smooth' });
+      } else {
+        container.scrollTo({ top: heightBeforeScroll, behavior: 'smooth' });
+      }
+
+      await new Promise(resolve => setTimeout(resolve, CHECK_DELAY_MS));
+
+      const currentContainer = getScrollContainer();
+      const currentHeight = scrollHeight(currentContainer);
+      const unchanged = currentContainer === previousContainer && currentHeight === previousHeight;
+
+      stableChecks = unchanged ? stableChecks + 1 : 0;
+      previousContainer = currentContainer;
+      previousHeight = currentHeight;
+    }
+
+    console.info('[DUPR Auto Scroll] No more content detected.');
+    showSummary(parseMatches());
+  }
+
+  function numberFrom(text) {
+    const value = Number.parseFloat((text || '').replace(/[^\d.+-]/g, ''));
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function playerId(link) {
+    return link.getAttribute('href')?.match(/\/dashboard\/player\/(\d+)/)?.[1] || null;
+  }
+
+  function findCurrentPlayerId(cards) {
+    const counts = new Map();
+
+    for (const card of cards) {
+      const ids = new Set([...card.querySelectorAll('a[href*="/dashboard/player/"]')].map(playerId).filter(Boolean));
+      for (const id of ids) counts.set(id, (counts.get(id) || 0) + 1);
+    }
+
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  }
+
+  function scoreForLink(link) {
+    // Walk outward until the player block first includes an integer score.
+    // Rating values contain a decimal, so they cannot be mistaken for scores.
+    let element = link;
+    for (let depth = 0; element && depth < 7; depth++, element = element.parentElement) {
+      const score = [...element.querySelectorAll('span')].find(span => {
+        const text = span.textContent.trim();
+        return /^\d{1,2}$/.test(text) && Number(text) <= 21;
+      });
+      if (score) return Number(score.textContent.trim());
+    }
+    return null;
+  }
+
+  function parseMatches() {
+    const cards = [...document.querySelectorAll(MATCH_SELECTOR)];
+    const currentPlayerId = findCurrentPlayerId(cards);
+
+    return cards.map((card, sourceIndex) => {
+      const links = [...card.querySelectorAll('a[href*="/dashboard/player/"]')];
+      const ownLink = links.find(link => playerId(link) === currentPlayerId);
+      let ownScore = ownLink ? scoreForLink(ownLink) : null;
+      const scores = links.map(scoreForLink).filter(Number.isFinite);
+      let opponentScore = scores.find(score => score !== ownScore) ?? null;
+      const eventName = card.querySelector('span.text-sm.font-semibold')?.textContent.trim() || 'DUPR match';
+      const details = [...card.querySelectorAll('p')].map(node => node.textContent.trim())
+        .find(text => /^\d{2}\/\d{2}\/\d{4}/.test(text)) || '';
+      const dateText = details.match(/^\d{2}\/\d{2}\/\d{4}/)?.[0] || '';
+      const result = [...card.querySelectorAll('p')].map(node => node.textContent.trim())
+        .find(text => text === 'Win' || text === 'Loss');
+      const deltaNode = card.firstElementChild?.querySelector('span.font-semibold.text-xs');
+      const ratingNode = ownLink ? [...ownLink.querySelectorAll('span')].find(node => /^\d\.\d{3}$/.test(node.textContent.trim())) : null;
+      const participantCount = new Set(links.map(playerId).filter(Boolean)).size;
+      const won = result === 'Win';
+
+      // Guard against site markup changes selecting the other team's score.
+      if (Number.isFinite(ownScore) && Number.isFinite(opponentScore)) {
+        const scoreMatchesResult = won ? ownScore > opponentScore : ownScore < opponentScore;
+        if (!scoreMatchesResult) [ownScore, opponentScore] = [opponentScore, ownScore];
+      }
+
+      return {
+        id: card.getAttribute('match-id'),
+        sourceIndex,
+        type: participantCount === 2 ? 'Singles' : participantCount === 4 ? 'Doubles'
+          : /singles/i.test(eventName) ? 'Singles' : /doubles/i.test(eventName) ? 'Doubles' : null,
+        won,
+        date: dateText ? new Date(`${dateText} 12:00:00`) : null,
+        eventName,
+        rating: numberFrom(ratingNode?.textContent),
+        delta: numberFrom(deltaNode?.textContent),
+        ownScore,
+        opponentScore
+      };
+    }).filter(match => match.type && match.date && !Number.isNaN(match.date.getTime()));
+  }
+
+  function longestStreak(matches, wantedResult) {
+    let current = 0;
+    let best = 0;
+    for (const match of matches) {
+      current = match.won === wantedResult ? current + 1 : 0;
+      best = Math.max(best, current);
+    }
+    return best;
+  }
+
+  function summarise(matches) {
+    // DUPR supplies cards newest-first. Reverse source order for games on the same date.
+    const chronological = [...matches].sort((a, b) => a.date - b.date || b.sourceIndex - a.sourceIndex);
+    const wins = matches.filter(match => match.won).length;
+    const scored = matches.filter(match => Number.isFinite(match.ownScore) && Number.isFinite(match.opponentScore));
+    const deltas = matches.map(match => match.delta).filter(Number.isFinite);
+    const margins = scored.map(match => match.ownScore - match.opponentScore);
+    const events = new Set(matches.map(match => match.eventName.replace(/\s*\((Singles|Doubles)\)\s*$/i, '')));
+    const monthly = new Map();
+    const rated = chronological.filter(match => Number.isFinite(match.rating));
+    const changed = chronological.filter(match => Number.isFinite(match.delta));
+    const byRating = (best, match) => !best || match.rating > best.rating ? match : best;
+    const byLowestRating = (best, match) => !best || match.rating < best.rating ? match : best;
+    const byDelta = (best, match) => !best || match.delta > best.delta ? match : best;
+    const byLowestDelta = (best, match) => !best || match.delta < best.delta ? match : best;
+    const byMargin = (best, match) => !best || match.ownScore - match.opponentScore > best.ownScore - best.opponentScore ? match : best;
+    const byLowestMargin = (best, match) => !best || match.ownScore - match.opponentScore < best.ownScore - best.opponentScore ? match : best;
+
+    for (const match of chronological) {
+      const key = `${match.date.getFullYear()}-${String(match.date.getMonth() + 1).padStart(2, '0')}`;
+      const bucket = monthly.get(key) || { label: match.date.toLocaleDateString(undefined, { month: 'short', year: '2-digit' }), wins: 0, total: 0 };
+      bucket.total++;
+      if (match.won) bucket.wins++;
+      monthly.set(key, bucket);
+    }
+
+    let currentStreak = 0;
+    const newestFirst = [...chronological].reverse();
+    const currentResult = newestFirst[0]?.won;
+    for (const match of newestFirst) {
+      if (match.won !== currentResult) break;
+      currentStreak++;
+    }
+
+    return {
+      matches: chronological,
+      games: matches.length,
+      wins,
+      losses: matches.length - wins,
+      winRate: matches.length ? wins / matches.length : 0,
+      ratingChange: deltas.reduce((sum, value) => sum + value, 0),
+      currentRating: rated.at(-1)?.rating ?? null,
+      peakRating: rated.reduce(byRating, null),
+      lowestRating: rated.reduce(byLowestRating, null),
+      biggestGain: changed.filter(match => match.delta > 0).reduce(byDelta, null),
+      biggestLoss: changed.filter(match => match.delta < 0).reduce(byLowestDelta, null),
+      pointsFor: scored.reduce((sum, match) => sum + match.ownScore, 0),
+      pointsAgainst: scored.reduce((sum, match) => sum + match.opponentScore, 0),
+      avgPointsFor: scored.length ? scored.reduce((sum, match) => sum + match.ownScore, 0) / scored.length : null,
+      avgPointsAgainst: scored.length ? scored.reduce((sum, match) => sum + match.opponentScore, 0) / scored.length : null,
+      avgMargin: margins.length ? margins.reduce((sum, value) => sum + value, 0) / margins.length : null,
+      closeRate: scored.length ? scored.filter(match => Math.abs(match.ownScore - match.opponentScore) <= 2).length / scored.length : null,
+      closeGames: scored.filter(match => Math.abs(match.ownScore - match.opponentScore) <= 2).length,
+      scoredGames: scored.length,
+      bestWinStreak: longestStreak(chronological, true),
+      currentStreak,
+      currentResult,
+      events: events.size,
+      biggestWin: scored.filter(match => match.won).reduce(byMargin, null),
+      biggestLossByScore: scored.filter(match => !match.won).reduce(byLowestMargin, null),
+      recentWins: chronological.slice(-10).filter(match => match.won).length,
+      recentGames: Math.min(10, chronological.length),
+      monthly: [...monthly.values()]
+    };
+  }
+
+  function formatSigned(value, digits = 2) {
+    if (!Number.isFinite(value)) return 'N/A';
+    return `${value > 0 ? '+' : ''}${value.toFixed(digits)}`;
+  }
+
+  function metric(label, value, note = '') {
+    return `<div class="dupr-metric"><span>${label}</span><strong>${value}</strong>${note ? `<small>${note}</small>` : ''}</div>`;
+  }
+
+  function matchDate(match) {
+    if (typeof match === 'string') return match;
+    return match?.date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) || 'No data';
+  }
+
+  function insight(label, value, match) {
+    return `<div class="dupr-insight"><span>${label}</span><strong>${value}</strong><small>${matchDate(match)}</small></div>`;
+  }
+
+  function disciplinePanel(type, summary) {
+    if (!summary.games) return `<section class="dupr-panel"><h2>${type}</h2><p class="dupr-empty">No ${type.toLowerCase()} results found.</p></section>`;
+    const streak = summary.currentStreak ? `${summary.currentStreak} ${summary.currentResult ? 'W' : 'L'}` : 'N/A';
+    return `
+      <section class="dupr-panel" data-discipline="${type}">
+        <div class="dupr-section-title"><div><span class="dupr-kicker">${type}</span><h2>${summary.games} rated games</h2></div><div class="dupr-headline-stats"><span>Current DUPR</span><strong>${summary.currentRating?.toFixed(3) || 'N/A'}</strong><small>${Math.round(summary.winRate * 100)}% win rate</small></div></div>
+        <div class="dupr-winbar"><i style="width:${summary.winRate * 100}%"></i></div>
+        <div class="dupr-metrics">
+          ${metric('Record', `${summary.wins}&ndash;${summary.losses}`, 'wins - losses')}
+          ${metric('Rating movement', formatSigned(summary.ratingChange, 3), 'across rated changes')}
+          ${metric('Average points', `${summary.avgPointsFor?.toFixed(1) || 'N/A'} / ${summary.avgPointsAgainst?.toFixed(1) || 'N/A'}`, 'for / against')}
+          ${metric('Average margin', formatSigned(summary.avgMargin, 1), `points across ${summary.scoredGames} games`)}
+          ${metric('Close games', summary.closeRate === null ? 'N/A' : `${summary.closeGames} / ${summary.scoredGames}`, summary.closeRate === null ? '' : `${Math.round(summary.closeRate * 100)}% decided by 2 or fewer`)}
+          ${metric('Best win streak', summary.bestWinStreak, `current ${streak}`)}
+          ${metric('Recent form', `${summary.recentWins}-${summary.recentGames - summary.recentWins}`, `last ${summary.recentGames} games`)}
+          ${metric('Events', summary.events, `${summary.pointsFor}-${summary.pointsAgainst} total points`)}
+        </div>
+        <div class="dupr-insights-section"><h3>Rating performance</h3><div class="dupr-insights">
+          ${insight('Peak rating', summary.peakRating?.rating.toFixed(3) || 'N/A', summary.peakRating)}
+          ${insight('Lowest rating', summary.lowestRating?.rating.toFixed(3) || 'N/A', summary.lowestRating)}
+          ${insight('Biggest gain', formatSigned(summary.biggestGain?.delta, 3), summary.biggestGain)}
+          ${insight('Biggest loss', formatSigned(summary.biggestLoss?.delta, 3), summary.biggestLoss)}
+        </div></div>
+        <div class="dupr-insights-section"><h3>Score highlights</h3><div class="dupr-insights">
+          ${insight('Biggest win', summary.biggestWin ? `+${summary.biggestWin.ownScore - summary.biggestWin.opponentScore} points` : 'N/A', summary.biggestWin)}
+          ${insight('Biggest loss', summary.biggestLossByScore ? `${summary.biggestLossByScore.ownScore - summary.biggestLossByScore.opponentScore} points` : 'N/A', summary.biggestLossByScore)}
+          ${insight('Points scored', summary.pointsFor, `across ${summary.scoredGames} games`)}
+          ${insight('Points conceded', summary.pointsAgainst, `across ${summary.scoredGames} games`)}
+        </div></div>
+        <div class="dupr-charts">
+          <figure class="dupr-rating-chart"><figcaption>Rating history <small>earliest to latest</small></figcaption><canvas data-chart="rating" aria-label="${type} rating history from earliest to latest"></canvas></figure>
+          <figure><figcaption>Monthly win rate</figcaption><canvas data-chart="monthly" aria-label="${type} monthly win rate"></canvas></figure>
+        </div>
+      </section>`;
+  }
+
+  function drawLineChart(canvas, matches) {
+    const points = matches.filter(match => Number.isFinite(match.rating));
+    canvas._duprChart = null;
+    drawCanvas(canvas, (context, width, height) => {
+      if (points.length < 2) return drawNoData(context, width, height);
+      const values = points.map(match => match.rating);
+      const padding = { top: 30, right: 24, bottom: 42, left: 48 };
+      let minTick = Math.floor(Math.min(...values) * 10);
+      let maxTick = Math.ceil(Math.max(...values) * 10);
+      if (minTick === maxTick) { minTick--; maxTick++; }
+      const min = minTick / 10;
+      const max = maxTick / 10;
+      const x = index => padding.left + index * (width - padding.left - padding.right) / (points.length - 1);
+      const y = value => padding.top + (max - value) * (height - padding.top - padding.bottom) / (max - min || 1);
+
+      context.strokeStyle = '#dce3e9';
+      context.lineWidth = 1;
+      context.font = '11px system-ui';
+      for (let tick = maxTick; tick >= minTick; tick--) {
+        const value = tick / 10;
+        const rowY = y(value);
+        context.beginPath(); context.moveTo(padding.left, rowY); context.lineTo(width - padding.right, rowY); context.stroke();
+        context.fillStyle = '#66767c'; context.textAlign = 'right';
+        context.fillText(value.toFixed(1), padding.left - 7, rowY + 4);
+      }
+      const gradient = context.createLinearGradient(0, 0, width, 0);
+      gradient.addColorStop(0, '#087f8c'); gradient.addColorStop(1, '#e85d3f');
+      context.strokeStyle = gradient; context.lineWidth = 3; context.lineJoin = 'round'; context.beginPath();
+      points.forEach((point, index) => index ? context.lineTo(x(index), y(point.rating)) : context.moveTo(x(index), y(point.rating)));
+      context.stroke();
+      for (const index of [0, points.length - 1]) {
+        context.beginPath(); context.arc(x(index), y(values[index]), 5, 0, Math.PI * 2);
+        context.fillStyle = index ? '#e85d3f' : '#087f8c'; context.fill();
+        context.strokeStyle = '#fff'; context.lineWidth = 2; context.stroke();
+      }
+      const dateLabel = point => point.date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: '2-digit' });
+      context.fillStyle = '#18343d'; context.font = '600 11px system-ui'; context.textAlign = 'left';
+      context.fillText(`${dateLabel(points[0])}  ${values[0].toFixed(3)}`, padding.left, height - 13);
+      context.textAlign = 'right';
+      context.fillText(`${dateLabel(points.at(-1))}  ${values.at(-1).toFixed(3)}`, width - padding.right, height - 13);
+      canvas._duprChart = { points, values, padding, x, y, width, height };
+    });
+    setupRatingInteraction(canvas);
+  }
+
+  function setupRatingInteraction(canvas) {
+    const figure = canvas.closest('.dupr-rating-chart');
+    if (!figure) return;
+
+    let hover = figure.querySelector('.dupr-chart-hover');
+    if (!hover) {
+      hover = document.createElement('div');
+      hover.className = 'dupr-chart-hover';
+      hover.innerHTML = '<i></i><b></b><div role="status"><strong></strong><span></span><small></small></div>';
+      figure.appendChild(hover);
+    }
+    if (canvas.dataset.interactive === 'true') return;
+    canvas.dataset.interactive = 'true';
+
+    canvas.addEventListener('pointermove', event => {
+      const chart = canvas._duprChart;
+      if (!chart) return;
+      const rect = canvas.getBoundingClientRect();
+      const localX = event.clientX - rect.left;
+      const plotWidth = chart.width - chart.padding.left - chart.padding.right;
+      const rawIndex = (localX - chart.padding.left) / plotWidth * (chart.points.length - 1);
+      const index = Math.max(0, Math.min(chart.points.length - 1, Math.round(rawIndex)));
+      const point = chart.points[index];
+      const pointX = chart.x(index);
+      const pointY = chart.y(point.rating);
+      const canvasLeft = canvas.offsetLeft;
+      const canvasTop = canvas.offsetTop;
+
+      hover.hidden = false;
+      hover.querySelector('i').style.cssText = `left:${canvasLeft + pointX}px;top:${canvasTop + chart.padding.top}px;height:${chart.height - chart.padding.top - chart.padding.bottom}px`;
+      hover.querySelector('b').style.cssText = `left:${canvasLeft + pointX}px;top:${canvasTop + pointY}px`;
+      const tooltip = hover.querySelector('div');
+      tooltip.style.left = `${canvasLeft + pointX}px`;
+      tooltip.style.top = `${canvasTop + pointY}px`;
+      tooltip.classList.toggle('dupr-tooltip-left', pointX > chart.width * 0.62);
+      tooltip.querySelector('strong').textContent = `DUPR ${point.rating.toFixed(3)}`;
+      tooltip.querySelector('span').textContent = point.date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+      tooltip.querySelector('small').textContent = point.eventName;
+    });
+    canvas.addEventListener('pointerleave', () => { hover.hidden = true; });
+  }
+
+  function drawBarChart(canvas, monthly) {
+    const data = monthly.slice(-12);
+    drawCanvas(canvas, (context, width, height) => {
+      if (!data.length) return drawNoData(context, width, height);
+      const slot = (width - 30) / data.length;
+      context.font = '10px system-ui'; context.textAlign = 'center';
+      data.forEach((bucket, index) => {
+        const rate = bucket.wins / bucket.total;
+        const barHeight = rate * (height - 48);
+        const barWidth = Math.max(6, slot * 0.58);
+        const left = 15 + index * slot + (slot - barWidth) / 2;
+        context.fillStyle = '#edf1f3'; context.fillRect(left, 12, barWidth, height - 48);
+        context.fillStyle = rate >= 0.5 ? '#087f8c' : '#e85d3f'; context.fillRect(left, 12 + height - 48 - barHeight, barWidth, barHeight);
+        context.fillStyle = '#66767c'; context.fillText(bucket.label.split(' ')[0], left + barWidth / 2, height - 18);
+        context.fillStyle = '#18343d'; context.fillText(`${Math.round(rate * 100)}%`, left + barWidth / 2, 10);
+      });
+    });
+  }
+
+  function drawCanvas(canvas, draw) {
+    const ratio = window.devicePixelRatio || 1;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    canvas.width = width * ratio; canvas.height = height * ratio;
+    const context = canvas.getContext('2d');
+    context.scale(ratio, ratio);
+    draw(context, width, height);
+  }
+
+  function drawNoData(context, width, height) {
+    context.fillStyle = '#7b898e'; context.font = '12px system-ui'; context.textAlign = 'center';
+    context.fillText('Not enough data', width / 2, height / 2);
+  }
+
+  function showSummary(matches) {
+    document.querySelector('#dupr-summary')?.remove();
+    document.querySelector('#dupr-reopen')?.remove();
+    document.querySelector('#dupr-summary-styles')?.remove();
+    const singles = summarise(matches.filter(match => match.type === 'Singles'));
+    const doubles = summarise(matches.filter(match => match.type === 'Doubles'));
+    const totalWins = singles.wins + doubles.wins;
+    const totalGames = matches.length;
+    const style = document.createElement('style');
+    style.id = 'dupr-summary-styles';
+    style.textContent = `
+      #dupr-summary{position:fixed;inset:0;z-index:99999;overflow:auto;background:#f3f5f4;color:#18343d;font-family:Inter,system-ui,sans-serif;letter-spacing:0}
+      #dupr-summary *{box-sizing:border-box;letter-spacing:0} .dupr-shell{max-width:1260px;margin:auto;padding:28px 28px 60px}
+      .dupr-header{display:flex;justify-content:space-between;align-items:end;gap:24px;margin-bottom:24px}.dupr-header h1{font-size:32px;line-height:1.1;margin:5px 0}.dupr-header p{margin:0;color:#66767c}
+      .dupr-kicker{color:#087f8c;font-size:12px;font-weight:800;text-transform:uppercase}.dupr-actions{display:flex;gap:8px}.dupr-actions button{border:1px solid #c7d0d3;background:#fff;color:#18343d;border-radius:6px;padding:9px 13px;font-weight:700;cursor:pointer}
+      .dupr-overview{display:grid;grid-template-columns:repeat(4,1fr);background:#18343d;color:white;border-radius:8px;margin-bottom:18px;overflow:hidden}.dupr-overview div{padding:18px 20px;border-right:1px solid #34505a}.dupr-overview div:last-child{border:0}.dupr-overview span{display:block;color:#b9c7cb;font-size:11px;text-transform:uppercase}.dupr-overview strong{font-size:25px}
+      .dupr-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.dupr-panel{background:white;border:1px solid #dce3e4;border-radius:8px;padding:22px;min-width:0}.dupr-section-title{display:flex;justify-content:space-between;align-items:end}.dupr-section-title h2{font-size:20px;margin:3px 0}.dupr-headline-stats{text-align:right}.dupr-headline-stats span,.dupr-headline-stats small{display:block;color:#718086;font-size:10px}.dupr-headline-stats strong{display:block;color:#087f8c;font-size:28px;line-height:1.1}.dupr-winbar{height:7px;background:#f0d9d4;margin:14px 0 18px}.dupr-winbar i{display:block;height:100%;background:#087f8c}
+      .dupr-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#e2e7e8;border:1px solid #e2e7e8}.dupr-metric{background:#fff;padding:13px;min-width:0}.dupr-metric span,.dupr-metric small{display:block;color:#718086;font-size:11px}.dupr-metric strong{display:block;font-size:17px;margin:2px 0;overflow-wrap:anywhere}.dupr-insights-section{margin-top:20px}.dupr-insights-section h3{font-size:12px;margin:0 0 8px;text-transform:uppercase;color:#52666d}.dupr-insights{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #e2e7e8}.dupr-insight{padding:11px;border-right:1px solid #e2e7e8;min-width:0}.dupr-insight:last-child{border:0}.dupr-insight span,.dupr-insight small{display:block;color:#718086;font-size:10px}.dupr-insight strong{display:block;font-size:15px;margin:3px 0;overflow-wrap:anywhere}.dupr-charts{display:grid;grid-template-columns:1fr;gap:20px;margin-top:20px}.dupr-charts figure{margin:0;min-width:0}.dupr-charts figcaption{font-size:12px;font-weight:800;margin-bottom:8px}.dupr-charts figcaption small{color:#718086;font-weight:500;margin-left:5px}.dupr-charts canvas{display:block;width:100%;height:160px}.dupr-charts .dupr-rating-chart{position:relative}.dupr-charts .dupr-rating-chart canvas{height:260px;cursor:crosshair;touch-action:pan-y}.dupr-empty{color:#718086}
+      .dupr-chart-hover[hidden]{display:none}.dupr-chart-hover>i{position:absolute;width:1px;background:#18343d55;pointer-events:none}.dupr-chart-hover>b{position:absolute;width:12px;height:12px;border:3px solid #fff;border-radius:50%;background:#e85d3f;box-shadow:0 0 0 2px #18343d;transform:translate(-50%,-50%);pointer-events:none}.dupr-chart-hover>div{position:absolute;z-index:2;width:210px;padding:10px 12px;background:#18343d;color:#fff;border-radius:6px;box-shadow:0 5px 18px #0004;transform:translate(10px,calc(-100% - 10px));pointer-events:none}.dupr-chart-hover>div.dupr-tooltip-left{transform:translate(calc(-100% - 10px),calc(-100% - 10px))}.dupr-chart-hover strong,.dupr-chart-hover span,.dupr-chart-hover small{display:block}.dupr-chart-hover strong{font-size:15px}.dupr-chart-hover span{margin-top:2px;color:#dce5e7;font-size:11px}.dupr-chart-hover small{margin-top:6px;color:#fff;font-size:11px;line-height:1.35}
+      #dupr-reopen{position:fixed;right:18px;bottom:18px;z-index:99998;border:0;border-radius:6px;background:#18343d;color:#fff;padding:11px 15px;font-weight:700;box-shadow:0 4px 16px #0003;cursor:pointer}
+      @media(max-width:900px){.dupr-grid{grid-template-columns:1fr}.dupr-shell{padding:18px 14px 40px}.dupr-header{align-items:start}.dupr-header h1{font-size:26px}}
+      @media(max-width:1100px){.dupr-metrics{grid-template-columns:repeat(2,1fr)}.dupr-insights{grid-template-columns:1fr 1fr}.dupr-insight:nth-child(2){border-right:0}.dupr-insight:nth-child(-n+2){border-bottom:1px solid #e2e7e8}}
+      @media(max-width:560px){.dupr-overview{grid-template-columns:1fr 1fr}.dupr-overview div:nth-child(2){border-right:0}.dupr-metrics{grid-template-columns:1fr 1fr}.dupr-charts{grid-template-columns:1fr}.dupr-header{display:block}.dupr-actions{margin-top:14px}.dupr-section-title{align-items:start}}
+    `;
+    const summary = document.createElement('div');
+    summary.id = 'dupr-summary';
+    summary.innerHTML = `<main class="dupr-shell">
+      <header class="dupr-header"><div><span class="dupr-kicker">Performance report</span><h1>Your DUPR results</h1><p>Singles and doubles are calculated independently.</p></div><div class="dupr-actions"><button type="button" data-action="refresh">Refresh data</button><button type="button" data-action="close">Show original</button></div></header>
+      <section class="dupr-overview"><div><span>Total games</span><strong>${totalGames}</strong></div><div><span>Overall record</span><strong>${totalWins}&ndash;${totalGames - totalWins}</strong></div><div><span>Singles win rate</span><strong>${Math.round(singles.winRate * 100)}%</strong></div><div><span>Doubles win rate</span><strong>${Math.round(doubles.winRate * 100)}%</strong></div></section>
+      <div class="dupr-grid">${disciplinePanel('Singles', singles)}${disciplinePanel('Doubles', doubles)}</div>
+    </main>`;
+    const reopen = document.createElement('button');
+    reopen.id = 'dupr-reopen'; reopen.type = 'button'; reopen.textContent = 'Show stats'; reopen.hidden = true;
+    document.head.appendChild(style); document.body.append(summary, reopen);
+    summary.querySelector('[data-action="close"]').addEventListener('click', () => { summary.hidden = true; reopen.hidden = false; });
+    summary.querySelector('[data-action="refresh"]').addEventListener('click', () => { summary.remove(); showSummary(parseMatches()); });
+    reopen.addEventListener('click', () => { summary.hidden = false; reopen.hidden = true; redraw(); });
+
+    function redraw() {
+      for (const panel of summary.querySelectorAll('[data-discipline]')) {
+        const data = panel.dataset.discipline === 'Singles' ? singles : doubles;
+        drawLineChart(panel.querySelector('[data-chart="rating"]'), data.matches);
+        drawBarChart(panel.querySelector('[data-chart="monthly"]'), data.monthly);
+      }
+    }
+    requestAnimationFrame(redraw);
+    window.addEventListener('resize', redraw);
+  }
+
+  loadEverything();
+})();
