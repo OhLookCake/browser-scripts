@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DUPR Dashboard Performance Summary
 // @namespace    violentmonkey.github.io
-// @version      1.5
+// @version      1.7
 // @author       ohlookcake
 // @description  Loads every DUPR result and presents separate singles and doubles performance reports
 // @match        https://dashboard.dupr.com/*
@@ -106,6 +106,13 @@
     return null;
   }
 
+  function nameForLink(link) {
+    return [...link.querySelectorAll('span')]
+      .filter(span => !span.querySelector('span'))
+      .map(span => span.textContent.trim())
+      .find(text => /[a-z]/i.test(text) && !/^\d\.\d{3}$/.test(text)) || 'Unknown player';
+  }
+
   function parseMatches() {
     const cards = [...document.querySelectorAll(MATCH_SELECTOR)];
     const currentPlayerId = findCurrentPlayerId(cards);
@@ -113,6 +120,11 @@
     return cards.map((card, sourceIndex) => {
       const links = [...card.querySelectorAll('a[href*="/dashboard/player/"]')];
       const ownLink = links.find(link => playerId(link) === currentPlayerId);
+      const participants = links.map(link => ({
+        id: playerId(link),
+        name: nameForLink(link),
+        score: scoreForLink(link)
+      }));
       let ownScore = ownLink ? scoreForLink(ownLink) : null;
       const scores = links.map(scoreForLink).filter(Number.isFinite);
       let opponentScore = scores.find(score => score !== ownScore) ?? null;
@@ -144,7 +156,9 @@
         rating: numberFrom(ratingNode?.textContent),
         delta: numberFrom(deltaNode?.textContent),
         ownScore,
-        opponentScore
+        opponentScore,
+        partnerNames: participants.filter(player => player.id !== currentPlayerId && player.score === ownScore).map(player => player.name),
+        opponentNames: participants.filter(player => player.score === opponentScore).map(player => player.name)
       };
     }).filter(match => match.type && match.date && !Number.isNaN(match.date.getTime()));
   }
@@ -273,7 +287,36 @@
   }
 
   function insight(label, value, match) {
-    return `<div class="dupr-insight"><span>${label}</span><strong>${value}</strong><small>${matchDate(match)}</small></div>`;
+    const matchAttribute = match?.id ? ` data-match-id="${match.id}" tabindex="0"` : '';
+    return `<div class="dupr-insight"${matchAttribute}><span>${label}</span><strong>${value}</strong><small>${matchDate(match)}</small></div>`;
+  }
+
+  function attachMatchDetails(root, matches) {
+    const matchesById = new Map(matches.map(match => [match.id, match]));
+    for (const element of root.querySelectorAll('.dupr-insight[data-match-id]')) {
+      const match = matchesById.get(element.dataset.matchId);
+      if (!match) continue;
+      const tooltip = document.createElement('div');
+      tooltip.className = 'dupr-match-details';
+
+      const addRow = (label, value) => {
+        if (!value) return;
+        const row = document.createElement('p');
+        const term = document.createElement('span');
+        const detail = document.createElement('strong');
+        term.textContent = label;
+        detail.textContent = value;
+        row.append(term, detail);
+        tooltip.appendChild(row);
+      };
+
+      addRow('Tournament', match.eventName);
+      if (match.type === 'Doubles') addRow('Partner', match.partnerNames.join(', ') || 'Unknown');
+      addRow(match.type === 'Doubles' ? 'Opponents' : 'Opponent', match.opponentNames.join(', ') || 'Unknown');
+      addRow('Score', Number.isFinite(match.ownScore) && Number.isFinite(match.opponentScore)
+        ? `${match.ownScore}-${match.opponentScore}` : 'Unavailable');
+      element.appendChild(tooltip);
+    }
   }
 
   function disciplinePanel(type, summary) {
@@ -317,7 +360,7 @@
     drawCanvas(canvas, (context, width, height) => {
       if (points.length < 2) return drawNoData(context, width, height);
       const values = points.map(match => match.rating);
-      const padding = { top: 30, right: 24, bottom: 42, left: 48 };
+      const padding = { top: 30, right: 24, bottom: 18, left: 48 };
       let minTick = Math.floor(Math.min(...values) * 10);
       let maxTick = Math.ceil(Math.max(...values) * 10);
       if (minTick === maxTick) { minTick--; maxTick++; }
@@ -346,11 +389,6 @@
         context.fillStyle = index ? '#e85d3f' : '#087f8c'; context.fill();
         context.strokeStyle = '#fff'; context.lineWidth = 2; context.stroke();
       }
-      const dateLabel = point => point.date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: '2-digit' });
-      context.fillStyle = '#18343d'; context.font = '600 11px system-ui'; context.textAlign = 'left';
-      context.fillText(`${dateLabel(points[0])}  ${values[0].toFixed(3)}`, padding.left, height - 13);
-      context.textAlign = 'right';
-      context.fillText(`${dateLabel(points.at(-1))}  ${values.at(-1).toFixed(3)}`, width - padding.right, height - 13);
       canvas._duprChart = { points, values, padding, x, y, width, height };
     });
     setupRatingInteraction(canvas);
@@ -431,7 +469,7 @@
       .dupr-kicker{color:#087f8c;font-size:12px;font-weight:800;text-transform:uppercase}.dupr-actions{display:flex;gap:8px}.dupr-actions button{border:1px solid #c7d0d3;background:#fff;color:#18343d;border-radius:6px;padding:9px 13px;font-weight:700;cursor:pointer}
       .dupr-overview{display:grid;grid-template-columns:repeat(4,1fr);background:#18343d;color:white;border-radius:8px;margin-bottom:18px;overflow:hidden}.dupr-overview div{padding:18px 20px;border-right:1px solid #34505a}.dupr-overview div:last-child{border:0}.dupr-overview span{display:block;color:#b9c7cb;font-size:11px;text-transform:uppercase}.dupr-overview strong{font-size:25px}
       .dupr-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.dupr-panel{background:white;border:1px solid #dce3e4;border-radius:8px;padding:22px;min-width:0}.dupr-section-title{display:flex;justify-content:space-between;align-items:end}.dupr-section-title h2{font-size:20px;margin:3px 0}.dupr-headline-stats{text-align:right}.dupr-headline-stats span,.dupr-headline-stats small{display:block;color:#718086;font-size:10px}.dupr-headline-stats strong{display:block;color:#087f8c;font-size:28px;line-height:1.1}.dupr-winbar{height:7px;background:#f0d9d4;margin:14px 0 18px}.dupr-winbar i{display:block;height:100%;background:#087f8c}
-      .dupr-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#e2e7e8;border:1px solid #e2e7e8}.dupr-metric{background:#fff;padding:13px;min-width:0}.dupr-metric span,.dupr-metric small{display:block;color:#718086;font-size:11px}.dupr-metric strong{display:block;font-size:17px;margin:2px 0;overflow-wrap:anywhere}.dupr-insights-section{margin-top:20px}.dupr-insights-section h3{font-size:12px;margin:0 0 8px;text-transform:uppercase;color:#52666d}.dupr-insights{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #e2e7e8}.dupr-insight{padding:11px;border-right:1px solid #e2e7e8;min-width:0}.dupr-insight:last-child{border:0}.dupr-insight span,.dupr-insight small{display:block;color:#718086;font-size:10px}.dupr-insight strong{display:block;font-size:15px;margin:3px 0;overflow-wrap:anywhere}.dupr-charts{display:grid;grid-template-columns:1fr;gap:20px;margin-top:20px}.dupr-charts figure{margin:0;min-width:0}.dupr-charts figcaption{font-size:12px;font-weight:800;margin-bottom:8px}.dupr-charts figcaption small{color:#718086;font-weight:500;margin-left:5px}.dupr-charts canvas{display:block;width:100%;height:160px}.dupr-charts .dupr-rating-chart{position:relative}.dupr-charts .dupr-rating-chart canvas{height:260px;cursor:crosshair;touch-action:pan-y}.dupr-empty{color:#718086}
+      .dupr-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#e2e7e8;border:1px solid #e2e7e8}.dupr-metric{background:#fff;padding:13px;min-width:0}.dupr-metric span,.dupr-metric small{display:block;color:#718086;font-size:11px}.dupr-metric strong{display:block;font-size:17px;margin:2px 0;overflow-wrap:anywhere}.dupr-insights-section{margin-top:20px}.dupr-insights-section h3{font-size:12px;margin:0 0 8px;text-transform:uppercase;color:#52666d}.dupr-insights{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #e2e7e8}.dupr-insight{position:relative;padding:11px;border-right:1px solid #e2e7e8;min-width:0}.dupr-insight:last-child{border:0}.dupr-insight span,.dupr-insight small{display:block;color:#718086;font-size:10px}.dupr-insight>strong{display:block;font-size:15px;margin:3px 0;overflow-wrap:anywhere}.dupr-insight[data-match-id]{cursor:help}.dupr-insight[data-match-id]:focus{outline:2px solid #087f8c;outline-offset:-2px}.dupr-match-details{display:none;position:absolute;z-index:10;left:0;bottom:calc(100% + 7px);width:270px;padding:10px 12px;background:#18343d;color:#fff;border-radius:6px;box-shadow:0 5px 18px #0004}.dupr-insight:nth-child(4n) .dupr-match-details{left:auto;right:0}.dupr-insight:hover>.dupr-match-details,.dupr-insight:focus>.dupr-match-details{display:block}.dupr-match-details p{margin:0 0 7px}.dupr-match-details p:last-child{margin:0}.dupr-match-details p>span{color:#aebfc4;font-size:9px;text-transform:uppercase}.dupr-match-details p>strong{display:block;margin-top:1px;color:#fff;font-size:11px;line-height:1.35}.dupr-charts{display:grid;grid-template-columns:1fr;gap:20px;margin-top:20px}.dupr-charts figure{margin:0;min-width:0}.dupr-charts figcaption{font-size:12px;font-weight:800;margin-bottom:8px}.dupr-charts figcaption small{color:#718086;font-weight:500;margin-left:5px}.dupr-charts canvas{display:block;width:100%;height:160px}.dupr-charts .dupr-rating-chart{position:relative}.dupr-charts .dupr-rating-chart canvas{height:260px;cursor:crosshair;touch-action:pan-y}.dupr-empty{color:#718086}
       .dupr-chart-hover[hidden]{display:none}.dupr-chart-hover>i{position:absolute;width:1px;background:#18343d55;pointer-events:none}.dupr-chart-hover>b{position:absolute;width:12px;height:12px;border:3px solid #fff;border-radius:50%;background:#e85d3f;box-shadow:0 0 0 2px #18343d;transform:translate(-50%,-50%);pointer-events:none}.dupr-chart-hover>div{position:absolute;z-index:2;width:210px;padding:10px 12px;background:#18343d;color:#fff;border-radius:6px;box-shadow:0 5px 18px #0004;transform:translate(10px,calc(-100% - 10px));pointer-events:none}.dupr-chart-hover>div.dupr-tooltip-left{transform:translate(calc(-100% - 10px),calc(-100% - 10px))}.dupr-chart-hover strong,.dupr-chart-hover span,.dupr-chart-hover small{display:block}.dupr-chart-hover strong{font-size:15px}.dupr-chart-hover span{margin-top:2px;color:#dce5e7;font-size:11px}.dupr-chart-hover small{margin-top:6px;color:#fff;font-size:11px;line-height:1.35}
       #dupr-reopen{position:fixed;right:18px;bottom:18px;z-index:99998;border:0;border-radius:6px;background:#18343d;color:#fff;padding:11px 15px;font-weight:700;box-shadow:0 4px 16px #0003;cursor:pointer}
       @media(max-width:900px){.dupr-grid{grid-template-columns:1fr}.dupr-shell{padding:18px 14px 40px}.dupr-header{align-items:start}.dupr-header h1{font-size:26px}}
@@ -448,6 +486,7 @@
     const reopen = document.createElement('button');
     reopen.id = 'dupr-reopen'; reopen.type = 'button'; reopen.textContent = 'Show stats'; reopen.hidden = true;
     document.head.appendChild(style); document.body.append(summary, reopen);
+    attachMatchDetails(summary, matches);
     summary.querySelector('[data-action="close"]').addEventListener('click', () => { summary.hidden = true; reopen.hidden = false; });
     summary.querySelector('[data-action="refresh"]').addEventListener('click', () => { summary.remove(); showSummary(parseMatches()); });
     reopen.addEventListener('click', () => { summary.hidden = false; reopen.hidden = true; redraw(); });
