@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DUPR Dashboard Performance Summary
 // @namespace    violentmonkey.github.io
-// @version      1.8
+// @version      1.10
 // @author       ohlookcake
 // @description  Loads every DUPR result and presents separate singles and doubles performance reports
 // @match        https://dashboard.dupr.com/*
@@ -221,7 +221,6 @@
     const chronological = [...matches].sort((a, b) => a.date - b.date || b.sourceIndex - a.sourceIndex);
     const wins = matches.filter(match => match.won).length;
     const scored = matches.filter(match => Number.isFinite(match.ownScore) && Number.isFinite(match.opponentScore));
-    const deltas = matches.map(match => match.delta).filter(Number.isFinite);
     const margins = scored.map(match => match.ownScore - match.opponentScore);
     const eventCount = countEvents(matches);
     const rated = chronological.filter(match => Number.isFinite(match.rating));
@@ -251,7 +250,6 @@
       wins,
       losses: matches.length - wins,
       winRate: matches.length ? wins / matches.length : 0,
-      ratingChange: deltas.reduce((sum, value) => sum + value, 0),
       currentRating: rated.at(-1)?.rating ?? null,
       peakRating: rated.reduce(byRating, null),
       lowestRating: rated.reduce(byLowestRating, null),
@@ -332,7 +330,6 @@
         <div class="dupr-winbar"><i style="width:${summary.winRate * 100}%"></i></div>
         <div class="dupr-metrics">
           ${metric('Record', `${summary.wins}&ndash;${summary.losses}`, 'wins - losses')}
-          ${metric('Rating movement', formatSigned(summary.ratingChange, 3), 'across rated changes')}
           ${metric('Average points', `${summary.avgPointsFor?.toFixed(1) || 'N/A'} / ${summary.avgPointsAgainst?.toFixed(1) || 'N/A'}`, 'for / against')}
           ${metric('Average margin', formatSigned(summary.avgMargin, 1), `${summary.pointsFor}-${summary.pointsAgainst} total points`)}
           ${metric('Close games (≤2)', summary.closeRate === null ? 'N/A' : `${summary.closeGames} (${Math.round(summary.closeRate * 100)}%)`)}
