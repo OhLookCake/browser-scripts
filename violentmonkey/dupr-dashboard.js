@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DUPR Dashboard Performance Summary
 // @namespace    violentmonkey.github.io
-// @version      1.10
+// @version      2.0
 // @author       ohlookcake
 // @description  Loads every DUPR result and presents separate singles and doubles performance reports
 // @match        https://dashboard.dupr.com/*
@@ -13,7 +13,7 @@
   'use strict';
 
   const CHECK_DELAY_MS = 700;
-  const REQUIRED_STABLE_CHECKS = 4;
+  const REQUIRED_STABLE_CHECKS = 5;
   const MIN_SCROLL_RANGE = 100;
   const MATCH_SELECTOR = '[match-id]';
 
@@ -46,16 +46,41 @@
     let stableChecks = 0;
     let previousHeight = 0;
     let previousContainer = null;
+    let lastScrollAt = 0;
+    let queuedScroll = null;
+
+    const performScroll = () => {
+      queuedScroll = null;
+      lastScrollAt = Date.now();
+      const container = getScrollContainer();
+      const bottom = scrollHeight(container);
+      if (container === document.scrollingElement) window.scrollTo(0, bottom);
+      else container.scrollTop = bottom;
+    };
+
+    const scrollToBottom = (immediate = false) => {
+      const wait = immediate ? 0 : Math.max(0, CHECK_DELAY_MS - (Date.now() - lastScrollAt));
+      if (wait === 0) {
+        if (queuedScroll) clearTimeout(queuedScroll);
+        performScroll();
+      } else if (!queuedScroll) {
+        queuedScroll = setTimeout(performScroll, wait);
+      }
+    };
+
+    // Mutation callbacks continue to react to network-loaded DOM updates when
+    // background tabs have their normal JavaScript timers throttled.
+    const contentObserver = new MutationObserver(() => {
+      scrollToBottom();
+    });
+    const onVisibilityChange = () => {
+      if (!document.hidden) scrollToBottom(true);
+    };
+    contentObserver.observe(document.body, { childList: true, subtree: true });
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     while (stableChecks < REQUIRED_STABLE_CHECKS) {
-      const container = getScrollContainer();
-      const heightBeforeScroll = scrollHeight(container);
-
-      if (container === document.scrollingElement) {
-        window.scrollTo({ top: heightBeforeScroll, behavior: 'smooth' });
-      } else {
-        container.scrollTo({ top: heightBeforeScroll, behavior: 'smooth' });
-      }
+      scrollToBottom();
 
       await new Promise(resolve => setTimeout(resolve, CHECK_DELAY_MS));
 
@@ -68,6 +93,9 @@
       previousHeight = currentHeight;
     }
 
+    contentObserver.disconnect();
+    if (queuedScroll) clearTimeout(queuedScroll);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
     console.info('[DUPR Auto Scroll] No more content detected.');
     showSummary(parseMatches());
   }
