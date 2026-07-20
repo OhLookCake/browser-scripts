@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Decathlon Slot Finding
 // @namespace    violentmonkey.github.io
-// @version      1.3
+// @version      1.3.1
 // @description  Auto-redirect from activity list to dates page, apply filters, and offer off-peak switch
 // @author       ohlookcake
 // @match        https://activities.decathlon.co.uk/en-GB/c/pickleball-canada-water*
@@ -207,7 +207,7 @@
             const isOffPeak = matchesCurrentPage(localStorage.getItem(OFF_PEAK_KEY));
             const firstHour = isOffPeak ? 9 : 16;
             const hourCount = isOffPeak ? 7 : 6;
-            const hours = Array.from({length: hourCount}, (_, i) => (i + firstHour).toString().padStart(2, '0'));
+            const hours = Array.from({length: hourCount}, (_, i) => (i + firstHour).toString());
             container.innerHTML = `
                 <div class="filter-column">
                     <div class="filter-title">Day</div>
@@ -218,7 +218,7 @@
                 <div class="filter-column">
                     <div class="filter-title">Hour</div>
                     <div class="filter-group">
-                        ${hours.map(h => `<label><input type="checkbox" class="hour-filter" value="${h}">${h}</label>`).join('')}
+                        ${hours.map(h => `<label><input type="checkbox" class="hour-filter" value="${h}">${h.padStart(2, '0')}</label>`).join('')}
                     </div>
                 </div>`;
             document.body.appendChild(container);
@@ -283,7 +283,7 @@
                 const timeEl = slot.querySelector('.timeslot__start-time');
                 if (!dayEl || !timeEl) return;
                 const slotDay = dayEl.innerText.trim().substring(0, 3);
-                const slotHour = timeEl.innerText.trim().substring(0, 2);
+                const slotHour = parseInt(timeEl.innerText.trim(), 10).toString();
                 const dayPass = selectedDays.length === 0 || selectedDays.includes(slotDay);
                 const hourPass = selectedHours.length === 0 || selectedHours.includes(slotHour);
                 slot.style.display = (dayPass && hourPass) ? 'block' : 'none';
