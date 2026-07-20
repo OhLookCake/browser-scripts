@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DUPR Dashboard Performance Summary
 // @namespace    violentmonkey.github.io
-// @version      1.3
+// @version      1.5
 // @author       ohlookcake
 // @description  Loads every DUPR result and presents separate singles and doubles performance reports
 // @match        https://dashboard.dupr.com/*
@@ -210,7 +210,6 @@
     const deltas = matches.map(match => match.delta).filter(Number.isFinite);
     const margins = scored.map(match => match.ownScore - match.opponentScore);
     const eventCount = countEvents(matches);
-    const monthly = new Map();
     const rated = chronological.filter(match => Number.isFinite(match.rating));
     const changed = chronological.filter(match => Number.isFinite(match.delta));
     const byRating = (best, match) => !best || match.rating > best.rating ? match : best;
@@ -219,14 +218,6 @@
     const byLowestDelta = (best, match) => !best || match.delta < best.delta ? match : best;
     const byMargin = (best, match) => !best || match.ownScore - match.opponentScore > best.ownScore - best.opponentScore ? match : best;
     const byLowestMargin = (best, match) => !best || match.ownScore - match.opponentScore < best.ownScore - best.opponentScore ? match : best;
-
-    for (const match of chronological) {
-      const key = `${match.date.getFullYear()}-${String(match.date.getMonth() + 1).padStart(2, '0')}`;
-      const bucket = monthly.get(key) || { label: match.date.toLocaleDateString(undefined, { month: 'short', year: '2-digit' }), wins: 0, total: 0 };
-      bucket.total++;
-      if (match.won) bucket.wins++;
-      monthly.set(key, bucket);
-    }
 
     let currentStreak = 0;
     const newestFirst = [...chronological].reverse();
@@ -263,8 +254,7 @@
       biggestWin: scored.filter(match => match.won).reduce(byMargin, null),
       biggestLossByScore: scored.filter(match => !match.won).reduce(byLowestMargin, null),
       recentWins: chronological.slice(-10).filter(match => match.won).length,
-      recentGames: Math.min(10, chronological.length),
-      monthly: [...monthly.values()]
+      recentGames: Math.min(10, chronological.length)
     };
   }
 
@@ -297,11 +287,11 @@
           ${metric('Record', `${summary.wins}&ndash;${summary.losses}`, 'wins - losses')}
           ${metric('Rating movement', formatSigned(summary.ratingChange, 3), 'across rated changes')}
           ${metric('Average points', `${summary.avgPointsFor?.toFixed(1) || 'N/A'} / ${summary.avgPointsAgainst?.toFixed(1) || 'N/A'}`, 'for / against')}
-          ${metric('Average margin', formatSigned(summary.avgMargin, 1), `points across ${summary.scoredGames} games`)}
-          ${metric('Close games (≤2 pts)', summary.closeRate === null ? 'N/A' : `${summary.closeGames} (${Math.round(summary.closeRate * 100)}%)`)}
-          ${metric('Best win streak', summary.bestWinStreak, `current ${streak}`)}
+          ${metric('Average margin', formatSigned(summary.avgMargin, 1), `${summary.pointsFor}-${summary.pointsAgainst} total points`)}
+          ${metric('Close games (≤2)', summary.closeRate === null ? 'N/A' : `${summary.closeGames} (${Math.round(summary.closeRate * 100)}%)`)}
+          ${metric('Best win streak', summary.bestWinStreak, `Current: ${streak}`)}
           ${metric('Recent form', `${summary.recentWins}-${summary.recentGames - summary.recentWins}`, `last ${summary.recentGames} games`)}
-          ${metric('Events', summary.events, `${summary.pointsFor}-${summary.pointsAgainst} total points`)}
+          ${metric('Events', summary.events)}
         </div>
         <div class="dupr-insights-section"><h3>Rating performance</h3><div class="dupr-insights">
           ${insight('Peak rating', summary.peakRating?.rating.toFixed(3) || 'N/A', summary.peakRating)}
@@ -317,7 +307,6 @@
         </div></div>
         <div class="dupr-charts">
           <figure class="dupr-rating-chart"><figcaption>Rating history <small>earliest to latest</small></figcaption><canvas data-chart="rating" aria-label="${type} rating history from earliest to latest"></canvas></figure>
-          <figure><figcaption>Monthly win rate</figcaption><canvas data-chart="monthly" aria-label="${type} monthly win rate"></canvas></figure>
         </div>
       </section>`;
   }
@@ -375,6 +364,7 @@
     if (!hover) {
       hover = document.createElement('div');
       hover.className = 'dupr-chart-hover';
+      hover.hidden = true;
       hover.innerHTML = '<i></i><b></b><div role="status"><strong></strong><span></span><small></small></div>';
       figure.appendChild(hover);
     }
@@ -407,25 +397,6 @@
       tooltip.querySelector('small').textContent = point.eventName;
     });
     canvas.addEventListener('pointerleave', () => { hover.hidden = true; });
-  }
-
-  function drawBarChart(canvas, monthly) {
-    const data = monthly.slice(-12);
-    drawCanvas(canvas, (context, width, height) => {
-      if (!data.length) return drawNoData(context, width, height);
-      const slot = (width - 30) / data.length;
-      context.font = '10px system-ui'; context.textAlign = 'center';
-      data.forEach((bucket, index) => {
-        const rate = bucket.wins / bucket.total;
-        const barHeight = rate * (height - 48);
-        const barWidth = Math.max(6, slot * 0.58);
-        const left = 15 + index * slot + (slot - barWidth) / 2;
-        context.fillStyle = '#edf1f3'; context.fillRect(left, 12, barWidth, height - 48);
-        context.fillStyle = rate >= 0.5 ? '#087f8c' : '#e85d3f'; context.fillRect(left, 12 + height - 48 - barHeight, barWidth, barHeight);
-        context.fillStyle = '#66767c'; context.fillText(bucket.label.split(' ')[0], left + barWidth / 2, height - 18);
-        context.fillStyle = '#18343d'; context.fillText(`${Math.round(rate * 100)}%`, left + barWidth / 2, 10);
-      });
-    });
   }
 
   function drawCanvas(canvas, draw) {
@@ -485,7 +456,6 @@
       for (const panel of summary.querySelectorAll('[data-discipline]')) {
         const data = panel.dataset.discipline === 'Singles' ? singles : doubles;
         drawLineChart(panel.querySelector('[data-chart="rating"]'), data.matches);
-        drawBarChart(panel.querySelector('[data-chart="monthly"]'), data.monthly);
       }
     }
     requestAnimationFrame(redraw);
