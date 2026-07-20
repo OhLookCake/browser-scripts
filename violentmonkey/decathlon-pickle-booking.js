@@ -239,10 +239,10 @@
 
             if (matchesCurrentPage(offPeakUrl) && normalUrl) {
                 targetUrl = normalUrl;
-                label = 'Switch to PEAK';
+                label = 'Book Peak';
             } else if (matchesCurrentPage(normalUrl) && offPeakUrl) {
                 targetUrl = offPeakUrl;
-                label = 'Switch to OFF PEAK';
+                label = 'Book Off-Peak';
             }
 
             if (!targetUrl) {
@@ -254,7 +254,7 @@
             btn.id = 'peak-switch';
             btn.textContent = label;
             btn.style.cssText = `
-                position: fixed; top: 20px; right: 20px; z-index: 9999;
+                position: fixed; top: 350px; left: 20px; z-index: 9999;
                 background: #007dbc; color: white; border: none;
                 padding: 8px 14px; border-radius: 6px; font-family: sans-serif;
                 font-size: 12px; font-weight: bold; cursor: pointer;
