@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DUPR Dashboard Performance Summary
 // @namespace    violentmonkey.github.io
-// @version      1.7
+// @version      1.8
 // @author       ohlookcake
 // @description  Loads every DUPR result and presents separate singles and doubles performance reports
 // @match        https://dashboard.dupr.com/*
@@ -226,6 +226,10 @@
     const eventCount = countEvents(matches);
     const rated = chronological.filter(match => Number.isFinite(match.rating));
     const changed = chronological.filter(match => Number.isFinite(match.delta));
+    const gamesToEleven = scored.filter(match => {
+      const winningScore = Math.max(match.ownScore, match.opponentScore);
+      return winningScore >= 11 && winningScore < 15;
+    });
     const byRating = (best, match) => !best || match.rating > best.rating ? match : best;
     const byLowestRating = (best, match) => !best || match.rating < best.rating ? match : best;
     const byDelta = (best, match) => !best || match.delta > best.delta ? match : best;
@@ -265,8 +269,8 @@
       currentStreak,
       currentResult,
       events: eventCount,
-      biggestWin: scored.filter(match => match.won).reduce(byMargin, null),
-      biggestLossByScore: scored.filter(match => !match.won).reduce(byLowestMargin, null),
+      biggestWin: gamesToEleven.filter(match => match.won).reduce(byMargin, null),
+      biggestLossByScore: gamesToEleven.filter(match => !match.won).reduce(byLowestMargin, null),
       recentWins: chronological.slice(-10).filter(match => match.won).length,
       recentGames: Math.min(10, chronological.length)
     };
@@ -343,8 +347,8 @@
           ${insight('Biggest loss', formatSigned(summary.biggestLoss?.delta, 3), summary.biggestLoss)}
         </div></div>
         <div class="dupr-insights-section"><h3>Score highlights</h3><div class="dupr-insights">
-          ${insight('Biggest win', summary.biggestWin ? `+${summary.biggestWin.ownScore - summary.biggestWin.opponentScore} points` : 'N/A', summary.biggestWin)}
-          ${insight('Biggest loss', summary.biggestLossByScore ? `${summary.biggestLossByScore.ownScore - summary.biggestLossByScore.opponentScore} points` : 'N/A', summary.biggestLossByScore)}
+          ${insight('Biggest win (to 11)', summary.biggestWin ? `+${summary.biggestWin.ownScore - summary.biggestWin.opponentScore} points` : 'N/A', summary.biggestWin)}
+          ${insight('Biggest loss (to 11)', summary.biggestLossByScore ? `${summary.biggestLossByScore.ownScore - summary.biggestLossByScore.opponentScore} points` : 'N/A', summary.biggestLossByScore)}
           ${insight('Points scored', summary.pointsFor, `across ${summary.scoredGames} games`)}
           ${insight('Points conceded', summary.pointsAgainst, `across ${summary.scoredGames} games`)}
         </div></div>
