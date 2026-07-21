@@ -442,6 +442,8 @@
       </section>`;
   }
 
+  const YEAR_COLORS = ['#087f8c', '#e85d3f', '#2f6fb0', '#c9ab00', '#7a4fb0', '#3fa34d', '#d1477a'];
+
   function drawLineChart(canvas, matches) {
     const points = matches.filter(match => Number.isFinite(match.rating));
     canvas._duprChart = null;
@@ -467,16 +469,35 @@
         context.fillStyle = '#66767c'; context.textAlign = 'right';
         context.fillText(value.toFixed(1), padding.left - 7, rowY + 4);
       }
-      const gradient = context.createLinearGradient(0, 0, width, 0);
-      gradient.addColorStop(0, '#087f8c'); gradient.addColorStop(1, '#e85d3f');
-      context.strokeStyle = gradient; context.lineWidth = 3; context.lineJoin = 'round'; context.beginPath();
-      points.forEach((point, index) => index ? context.lineTo(x(index), y(point.rating)) : context.moveTo(x(index), y(point.rating)));
-      context.stroke();
+      const years = [...new Set(points.map(point => point.date.getFullYear()))].sort((a, b) => a - b);
+      const colorForYear = year => YEAR_COLORS[years.indexOf(year) % YEAR_COLORS.length];
+
+      // Each segment is coloured by the year it arrives in, so the line changes hue at the year boundary.
+      context.lineWidth = 3; context.lineJoin = 'round'; context.lineCap = 'round';
+      for (let index = 1; index < points.length; index++) {
+        context.strokeStyle = colorForYear(points[index].date.getFullYear());
+        context.beginPath();
+        context.moveTo(x(index - 1), y(points[index - 1].rating));
+        context.lineTo(x(index), y(points[index].rating));
+        context.stroke();
+      }
       for (const index of [0, points.length - 1]) {
         context.beginPath(); context.arc(x(index), y(values[index]), 5, 0, Math.PI * 2);
-        context.fillStyle = index ? '#e85d3f' : '#087f8c'; context.fill();
+        context.fillStyle = colorForYear(points[index].date.getFullYear()); context.fill();
         context.strokeStyle = '#fff'; context.lineWidth = 2; context.stroke();
       }
+
+      context.font = '11px system-ui'; context.textAlign = 'left'; context.textBaseline = 'middle';
+      let legendX = padding.left;
+      for (const year of years) {
+        context.fillStyle = colorForYear(year);
+        context.fillRect(legendX, 9, 10, 10);
+        context.fillStyle = '#52666d';
+        context.fillText(String(year), legendX + 14, 15);
+        legendX += 14 + context.measureText(String(year)).width + 16;
+      }
+      context.textBaseline = 'alphabetic';
+
       canvas._duprChart = { points, values, padding, x, y, width, height };
     });
     setupRatingInteraction(canvas);
