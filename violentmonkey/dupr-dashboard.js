@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DUPR Dashboard Performance Summary
 // @namespace    violentmonkey.github.io
-// @version      2.1
+// @version      2.2
 // @author       ohlookcake
 // @description  Loads every DUPR result and presents separate singles and doubles performance reports
 // @match        https://dashboard.dupr.com/*
@@ -141,6 +141,15 @@
       .find(text => /[a-z]/i.test(text) && !/^\d\.\d{3}$/.test(text)) || 'Unknown player';
   }
 
+  function ratingForLink(link) {
+    const node = [...link.querySelectorAll('span')].find(span => /^\d\.\d{3}$/.test(span.textContent.trim()));
+    return numberFrom(node?.textContent);
+  }
+
+  function mean(values) {
+    return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+  }
+
   function parseMatches() {
     const cards = [...document.querySelectorAll(MATCH_SELECTOR)];
     const currentPlayerId = findCurrentPlayerId(cards);
@@ -151,7 +160,8 @@
       const participants = links.map(link => ({
         id: playerId(link),
         name: nameForLink(link),
-        score: scoreForLink(link)
+        score: scoreForLink(link),
+        rating: ratingForLink(link)
       }));
       let ownScore = ownLink ? scoreForLink(ownLink) : null;
       const scores = links.map(scoreForLink).filter(Number.isFinite);
@@ -163,7 +173,7 @@
       const result = [...card.querySelectorAll('p')].map(node => node.textContent.trim())
         .find(text => text === 'Win' || text === 'Loss');
       const deltaNode = card.firstElementChild?.querySelector('span.font-semibold.text-xs');
-      const ratingNode = ownLink ? [...ownLink.querySelectorAll('span')].find(node => /^\d\.\d{3}$/.test(node.textContent.trim())) : null;
+      const rating = ownLink ? ratingForLink(ownLink) : null;
       const participantCount = new Set(links.map(playerId).filter(Boolean)).size;
       const won = result === 'Win';
 
@@ -173,6 +183,14 @@
         if (!scoreMatchesResult) [ownScore, opponentScore] = [opponentScore, ownScore];
       }
 
+      // Teammates share our score; opponents carry the other team's score.
+      const partners = participants.filter(player => player.id !== currentPlayerId && player.score === ownScore);
+      const opponents = participants.filter(player => player.score === opponentScore);
+      const myTeamRatings = [rating, ...partners.map(player => player.rating)].filter(Number.isFinite);
+      const oppTeamRatings = opponents.map(player => player.rating).filter(Number.isFinite);
+      const myTeamAvg = mean(myTeamRatings);
+      const oppTeamAvg = mean(oppTeamRatings);
+
       return {
         id: card.getAttribute('match-id'),
         sourceIndex,
@@ -181,12 +199,17 @@
         won,
         date: dateText ? new Date(`${dateText} 12:00:00`) : null,
         eventName,
-        rating: numberFrom(ratingNode?.textContent),
+        rating,
         delta: numberFrom(deltaNode?.textContent),
         ownScore,
         opponentScore,
-        partnerNames: participants.filter(player => player.id !== currentPlayerId && player.score === ownScore).map(player => player.name),
-        opponentNames: participants.filter(player => player.score === opponentScore).map(player => player.name)
+        partners,
+        opponents,
+        partnerNames: partners.map(player => player.name),
+        opponentNames: opponents.map(player => player.name),
+        myTeamAvg,
+        oppTeamAvg,
+        ratingGap: Number.isFinite(myTeamAvg) && Number.isFinite(oppTeamAvg) ? oppTeamAvg - myTeamAvg : null
       };
     }).filter(match => match.type && match.date && !Number.isNaN(match.date.getTime()));
   }
@@ -264,6 +287,17 @@
     const byMargin = (best, match) => !best || match.ownScore - match.opponentScore > best.ownScore - best.opponentScore ? match : best;
     const byLowestMargin = (best, match) => !best || match.ownScore - match.opponentScore < best.ownScore - best.opponentScore ? match : best;
 
+    const partnerRatings = matches.flatMap(match => match.partners.map(player => player.rating).filter(Number.isFinite));
+    const opponentRatings = matches.flatMap(match => match.opponents.map(player => player.rating).filter(Number.isFinite));
+    const partnerDiffs = matches.flatMap(match => Number.isFinite(match.rating)
+      ? match.partners.filter(player => Number.isFinite(player.rating)).map(player => player.rating - match.rating) : []);
+    const opponentDiffs = matches.flatMap(match => Number.isFinite(match.rating)
+      ? match.opponents.filter(player => Number.isFinite(player.rating)).map(player => player.rating - match.rating) : []);
+    // ratingGap is opponents minus my team, so a win with the largest gap is the biggest upset delivered.
+    const gapped = matches.filter(match => Number.isFinite(match.ratingGap));
+    const byBiggestGap = (best, match) => !best || match.ratingGap > best.ratingGap ? match : best;
+    const bySmallestGap = (best, match) => !best || match.ratingGap < best.ratingGap ? match : best;
+
     let currentStreak = 0;
     const newestFirst = [...chronological].reverse();
     const currentResult = newestFirst[0]?.won;
@@ -298,7 +332,15 @@
       biggestWin: gamesToEleven.filter(match => match.won).reduce(byMargin, null),
       biggestLossByScore: gamesToEleven.filter(match => !match.won).reduce(byLowestMargin, null),
       recentWins: chronological.slice(-10).filter(match => match.won).length,
-      recentGames: Math.min(10, chronological.length)
+      recentGames: Math.min(10, chronological.length),
+      avgPartnerRating: mean(partnerRatings),
+      avgPartnerDiff: mean(partnerDiffs),
+      avgOpponentRating: mean(opponentRatings),
+      avgOpponentDiff: mean(opponentDiffs),
+      partnerSamples: partnerRatings.length,
+      opponentSamples: opponentRatings.length,
+      biggestUpsetDelivered: gapped.filter(match => match.won).reduce(byBiggestGap, null),
+      biggestUpsetReceived: gapped.filter(match => !match.won).reduce(bySmallestGap, null)
     };
   }
 
@@ -340,11 +382,18 @@
         tooltip.appendChild(row);
       };
 
+      const withRatings = players => players
+        .map(player => Number.isFinite(player.rating) ? `${player.name} (${player.rating.toFixed(3)})` : player.name)
+        .join(', ') || 'Unknown';
+
       addRow('Tournament', match.eventName);
-      if (match.type === 'Doubles') addRow('Partner', match.partnerNames.join(', ') || 'Unknown');
-      addRow(match.type === 'Doubles' ? 'Opponents' : 'Opponent', match.opponentNames.join(', ') || 'Unknown');
+      if (match.type === 'Doubles') addRow('Partner', withRatings(match.partners));
+      addRow(match.type === 'Doubles' ? 'Opponents' : 'Opponent', withRatings(match.opponents));
       addRow('Score', Number.isFinite(match.ownScore) && Number.isFinite(match.opponentScore)
         ? `${match.ownScore}-${match.opponentScore}` : 'Unavailable');
+      if (Number.isFinite(match.ratingGap)) {
+        addRow('Rating gap', `${formatSigned(match.ratingGap, 2)} (you ${match.myTeamAvg.toFixed(2)} vs ${match.oppTeamAvg.toFixed(2)})`);
+      }
       element.appendChild(tooltip);
     }
   }
@@ -376,6 +425,16 @@
           ${insight('Biggest loss (to 11)', summary.biggestLossByScore ? `${summary.biggestLossByScore.ownScore - summary.biggestLossByScore.opponentScore} points` : 'N/A', summary.biggestLossByScore)}
           ${insight('Points scored', summary.pointsFor, `across ${summary.scoredGames} games`)}
           ${insight('Points conceded', summary.pointsAgainst, `across ${summary.scoredGames} games`)}
+        </div></div>
+        <div class="dupr-insights-section"><h3>Partners &amp; opponents</h3><div class="dupr-metrics">
+          ${metric('Avg partner rating', summary.avgPartnerRating?.toFixed(3) ?? 'N/A', summary.partnerSamples ? `across ${summary.partnerSamples} partners` : '')}
+          ${metric('Avg partner Δ vs me', formatSigned(summary.avgPartnerDiff, 3), 'partner minus my rating')}
+          ${metric('Avg opponent rating', summary.avgOpponentRating?.toFixed(3) ?? 'N/A', summary.opponentSamples ? `across ${summary.opponentSamples} opponents` : '')}
+          ${metric('Avg opponent Δ vs me', formatSigned(summary.avgOpponentDiff, 3), 'opponent minus my rating')}
+        </div></div>
+        <div class="dupr-insights-section"><h3>Rating upsets</h3><div class="dupr-insights">
+          ${insight('Biggest upset delivered', summary.biggestUpsetDelivered ? `${formatSigned(summary.biggestUpsetDelivered.ratingGap, 2)} rating gap` : 'N/A', summary.biggestUpsetDelivered)}
+          ${insight('Biggest upset received', summary.biggestUpsetReceived ? `${formatSigned(summary.biggestUpsetReceived.ratingGap, 2)} rating gap` : 'N/A', summary.biggestUpsetReceived)}
         </div></div>
         <div class="dupr-charts">
           <figure class="dupr-rating-chart"><figcaption>Rating history <small>earliest to latest</small></figcaption><canvas data-chart="rating" aria-label="${type} rating history from earliest to latest"></canvas></figure>
