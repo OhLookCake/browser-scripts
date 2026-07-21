@@ -610,5 +610,22 @@
     window.addEventListener('resize', redraw);
   }
 
-  loadEverything();
+  function showAnalyseButton() {
+    document.querySelector('#dupr-analyse')?.remove();
+    const button = document.createElement('button');
+    button.id = 'dupr-analyse';
+    button.type = 'button';
+    button.textContent = 'Analyse';
+    button.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:99998;border:0;border-radius:6px;background:#18343d;color:#fff;padding:11px 15px;font-weight:700;box-shadow:0 4px 16px #0003;cursor:pointer;font-family:Inter,system-ui,sans-serif';
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      button.textContent = 'Analysing…';
+      button.style.cursor = 'progress';
+      await loadEverything();
+      button.remove();
+    });
+    document.body.appendChild(button);
+  }
+
+  showAnalyseButton();
 })();
