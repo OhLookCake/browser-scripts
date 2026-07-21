@@ -427,8 +427,8 @@
           ${insight('Points conceded', summary.pointsAgainst, `across ${summary.scoredGames} games`)}
         </div></div>
         <div class="dupr-insights-section"><h3>Partners &amp; opponents</h3><div class="dupr-metrics">
-          ${metric('Avg partner rating', summary.avgPartnerRating?.toFixed(3) ?? 'N/A', summary.partnerSamples ? `across ${summary.partnerSamples} partners` : '')}
-          ${metric('Avg partner Δ vs me', formatSigned(summary.avgPartnerDiff, 3), 'partner minus my rating')}
+          ${summary.partnerSamples ? metric('Avg partner rating', summary.avgPartnerRating?.toFixed(3) ?? 'N/A', `across ${summary.partnerSamples} partners`) : ''}
+          ${summary.partnerSamples ? metric('Avg partner Δ vs me', formatSigned(summary.avgPartnerDiff, 3), 'partner minus my rating') : ''}
           ${metric('Avg opponent rating', summary.avgOpponentRating?.toFixed(3) ?? 'N/A', summary.opponentSamples ? `across ${summary.opponentSamples} opponents` : '')}
           ${metric('Avg opponent Δ vs me', formatSigned(summary.avgOpponentDiff, 3), 'opponent minus my rating')}
         </div></div>
