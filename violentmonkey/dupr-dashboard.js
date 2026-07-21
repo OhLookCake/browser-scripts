@@ -399,7 +399,7 @@
   }
 
   function disciplinePanel(type, summary) {
-    if (!summary.games) return `<section class="dupr-panel"><h2>${type}</h2><p class="dupr-empty">No ${type.toLowerCase()} results found.</p></section>`;
+    if (!summary.games) return `<section class="dupr-panel" data-discipline="${type}"><h2>${type}</h2><p class="dupr-empty">No ${type.toLowerCase()} results found.</p></section>`;
     const streak = summary.currentStreak ? `${summary.currentStreak} ${summary.currentResult ? 'W' : 'L'}` : 'N/A';
     return `
       <section class="dupr-panel" data-discipline="${type}">
@@ -577,6 +577,7 @@
       .dupr-header{display:flex;justify-content:flex-end;align-items:center;margin-bottom:16px}
       .dupr-kicker{color:#087f8c;font-size:12px;font-weight:800;text-transform:uppercase}.dupr-actions{display:flex;gap:8px}.dupr-actions button{border:1px solid #c7d0d3;background:#fff;color:#18343d;border-radius:6px;padding:9px 13px;font-weight:700;cursor:pointer}
       .dupr-overview{display:grid;grid-template-columns:repeat(4,1fr);background:#18343d;color:white;border-radius:8px;margin-bottom:18px;overflow:hidden}.dupr-overview div{padding:18px 20px;border-right:1px solid #34505a}.dupr-overview div:last-child{border:0}.dupr-overview span{display:block;color:#b9c7cb;font-size:11px;text-transform:uppercase}.dupr-overview strong{font-size:25px}
+      .dupr-tabs{display:flex;gap:6px;margin-bottom:16px}.dupr-tab{border:1px solid #c7d0d3;background:#fff;color:#52666d;border-radius:6px;padding:9px 20px;font-weight:700;font-size:14px;cursor:pointer}.dupr-tab[aria-selected="true"]{background:#18343d;color:#fff;border-color:#18343d}.dupr-panel[hidden]{display:none}
       .dupr-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.dupr-panel{background:white;border:1px solid #dce3e4;border-radius:8px;padding:22px;min-width:0}.dupr-section-title{display:flex;justify-content:space-between;align-items:end}.dupr-section-title h2{font-size:20px;margin:3px 0}.dupr-headline-stats{text-align:right}.dupr-headline-stats span,.dupr-headline-stats small{display:block;color:#718086;font-size:10px}.dupr-headline-stats strong{display:block;color:#087f8c;font-size:28px;line-height:1.1}.dupr-winbar{height:7px;background:#f0d9d4;margin:14px 0 18px}.dupr-winbar i{display:block;height:100%;background:#087f8c}
       .dupr-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#e2e7e8;border:1px solid #e2e7e8}.dupr-metric{background:#fff;padding:13px;min-width:0}.dupr-metric span,.dupr-metric small{display:block;color:#718086;font-size:11px}.dupr-metric strong{display:block;font-size:17px;margin:2px 0;overflow-wrap:anywhere}.dupr-insights-section{margin-top:20px}.dupr-insights-section h3{font-size:12px;margin:0 0 8px;text-transform:uppercase;color:#52666d}.dupr-insights{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #e2e7e8}.dupr-insight{position:relative;padding:11px;border-right:1px solid #e2e7e8;min-width:0}.dupr-insight:last-child{border:0}.dupr-insight span,.dupr-insight small{display:block;color:#718086;font-size:10px}.dupr-insight>strong{display:block;font-size:15px;margin:3px 0;overflow-wrap:anywhere}.dupr-insight[data-match-id]{cursor:help}.dupr-insight[data-match-id]:focus{outline:2px solid #087f8c;outline-offset:-2px}.dupr-match-details{display:none;position:absolute;z-index:10;left:0;bottom:calc(100% + 7px);width:270px;padding:10px 12px;background:#18343d;color:#fff;border-radius:6px;box-shadow:0 5px 18px #0004}.dupr-insight:nth-child(4n) .dupr-match-details{left:auto;right:0}.dupr-insight:hover>.dupr-match-details,.dupr-insight:focus>.dupr-match-details{display:block}.dupr-match-details p{margin:0 0 7px}.dupr-match-details p:last-child{margin:0}.dupr-match-details p>span{color:#aebfc4;font-size:9px;text-transform:uppercase}.dupr-match-details p>strong{display:block;margin-top:1px;color:#fff;font-size:11px;line-height:1.35}.dupr-charts{display:grid;grid-template-columns:1fr;gap:20px;margin-top:20px}.dupr-charts figure{margin:0;min-width:0}.dupr-charts figcaption{font-size:12px;font-weight:800;margin-bottom:8px}.dupr-charts figcaption small{color:#718086;font-weight:500;margin-left:5px}.dupr-charts canvas{display:block;width:100%;height:160px}.dupr-charts .dupr-rating-chart{position:relative}.dupr-charts .dupr-rating-chart canvas{height:260px;cursor:crosshair;touch-action:pan-y}.dupr-empty{color:#718086}
       .dupr-chart-hover[hidden]{display:none}.dupr-chart-hover>i{position:absolute;width:1px;background:#18343d55;pointer-events:none}.dupr-chart-hover>b{position:absolute;width:12px;height:12px;border:3px solid #fff;border-radius:50%;background:#e85d3f;box-shadow:0 0 0 2px #18343d;transform:translate(-50%,-50%);pointer-events:none}.dupr-chart-hover>div{position:absolute;z-index:2;width:210px;padding:10px 12px;background:#18343d;color:#fff;border-radius:6px;box-shadow:0 5px 18px #0004;transform:translate(10px,calc(-100% - 10px));pointer-events:none}.dupr-chart-hover>div.dupr-tooltip-left{transform:translate(calc(-100% - 10px),calc(-100% - 10px))}.dupr-chart-hover strong,.dupr-chart-hover span,.dupr-chart-hover small{display:block}.dupr-chart-hover strong{font-size:15px}.dupr-chart-hover span{margin-top:2px;color:#dce5e7;font-size:11px}.dupr-chart-hover small{margin-top:6px;color:#fff;font-size:11px;line-height:1.35}
@@ -590,7 +591,11 @@
     summary.innerHTML = `<main class="dupr-shell">
       <header class="dupr-header"><div class="dupr-actions"><button type="button" data-action="refresh">Refresh data</button><button type="button" data-action="close">Show original</button></div></header>
       <section class="dupr-overview"><div><span>Total games</span><strong>${totalGames}</strong></div><div><span>Overall record</span><strong>${totalWins}&ndash;${totalGames - totalWins}</strong></div><div><span>Singles win rate</span><strong>${Math.round(singles.winRate * 100)}%</strong></div><div><span>Doubles win rate</span><strong>${Math.round(doubles.winRate * 100)}%</strong></div></section>
-      <div class="dupr-grid">${disciplinePanel('Singles', singles)}${disciplinePanel('Doubles', doubles)}</div>
+      <div class="dupr-tabs" role="tablist">
+        <button type="button" class="dupr-tab" data-tab="Doubles" role="tab" aria-selected="true">Doubles</button>
+        <button type="button" class="dupr-tab" data-tab="Singles" role="tab" aria-selected="false">Singles</button>
+      </div>
+      <div class="dupr-panels">${disciplinePanel('Doubles', doubles)}${disciplinePanel('Singles', singles)}</div>
     </main>`;
     const reopen = document.createElement('button');
     reopen.id = 'dupr-reopen'; reopen.type = 'button'; reopen.textContent = 'Show stats'; reopen.hidden = true;
@@ -600,12 +605,27 @@
     summary.querySelector('[data-action="refresh"]').addEventListener('click', () => { summary.remove(); showSummary(parseMatches()); });
     reopen.addEventListener('click', () => { summary.hidden = false; reopen.hidden = true; redraw(); });
 
-    function redraw() {
-      for (const panel of summary.querySelectorAll('[data-discipline]')) {
-        const data = panel.dataset.discipline === 'Singles' ? singles : doubles;
-        drawLineChart(panel.querySelector('[data-chart="rating"]'), data.matches);
-      }
+    const panels = new Map([...summary.querySelectorAll('[data-discipline]')].map(panel => [panel.dataset.discipline, panel]));
+    const tabs = [...summary.querySelectorAll('.dupr-tab')];
+
+    function drawPanel(panel) {
+      if (!panel) return;
+      const canvas = panel.querySelector('[data-chart="rating"]');
+      if (canvas) drawLineChart(canvas, (panel.dataset.discipline === 'Singles' ? singles : doubles).matches);
     }
+
+    function selectTab(name) {
+      for (const tab of tabs) tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
+      for (const [discipline, panel] of panels) panel.hidden = discipline !== name;
+      drawPanel(panels.get(name));
+    }
+
+    function redraw() {
+      drawPanel([...panels.values()].find(panel => !panel.hidden));
+    }
+
+    for (const tab of tabs) tab.addEventListener('click', () => selectTab(tab.dataset.tab));
+    selectTab('Doubles');
     requestAnimationFrame(redraw);
     window.addEventListener('resize', redraw);
   }
