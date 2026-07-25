@@ -325,6 +325,14 @@
       ? match.partners.filter(player => Number.isFinite(player.rating)).map(player => player.rating - match.rating) : []);
     const opponentDiffs = matches.flatMap(match => Number.isFinite(match.rating)
       ? match.opponents.filter(player => Number.isFinite(player.rating)).map(player => player.rating - match.rating) : []);
+    // Strength matchups compare partner/opponent strength against my own rating.
+    const partnerAvg = match => mean(match.partners.map(player => player.rating).filter(Number.isFinite));
+    const record = predicate => {
+      const games = matches.filter(predicate);
+      const wins = games.filter(match => match.won).length;
+      return { games: games.length, wins, losses: games.length - wins };
+    };
+
     // ratingGap is opponents minus my team, so a win with the largest gap is the biggest upset delivered.
     const gapped = matches.filter(match => Number.isFinite(match.ratingGap));
     const byBiggestGap = (best, match) => !best || match.ratingGap > best.ratingGap ? match : best;
@@ -372,6 +380,10 @@
       avgOpponentDiff: mean(opponentDiffs),
       partnerSamples: partnerRatings.length,
       opponentSamples: opponentRatings.length,
+      strongerPartner: record(match => Number.isFinite(match.rating) && Number.isFinite(partnerAvg(match)) && partnerAvg(match) > match.rating),
+      weakerPartner: record(match => Number.isFinite(match.rating) && Number.isFinite(partnerAvg(match)) && partnerAvg(match) < match.rating),
+      strongerOpponents: record(match => Number.isFinite(match.rating) && Number.isFinite(match.oppTeamAvg) && match.oppTeamAvg > match.rating),
+      weakerOpponents: record(match => Number.isFinite(match.rating) && Number.isFinite(match.oppTeamAvg) && match.oppTeamAvg < match.rating),
       biggestUpsetDelivered: gapped.filter(match => match.won).reduce(byBiggestGap, null),
       biggestUpsetReceived: gapped.filter(match => !match.won).reduce(bySmallestGap, null)
     };
@@ -384,6 +396,11 @@
 
   function metric(label, value, note = '') {
     return `<div class="dupr-metric"><span>${label}</span><strong>${value}</strong>${note ? `<small>${note}</small>` : ''}</div>`;
+  }
+
+  function recordLine(record) {
+    if (!record || !record.games) return 'N/A';
+    return `${record.wins}&ndash;${record.losses} (${(record.wins / record.games * 100).toFixed(1)}%)`;
   }
 
   function matchDate(match) {
@@ -497,6 +514,12 @@
           ${summary.partnerSamples ? metric('Avg partner Δ vs me', formatSigned(summary.avgPartnerDiff, 3), 'partner minus my rating') : ''}
           ${metric('Avg opponent rating', summary.avgOpponentRating?.toFixed(3) ?? 'N/A', summary.opponentSamples ? `across ${summary.opponentSamples} opponents` : '')}
           ${metric('Avg opponent Δ vs me', formatSigned(summary.avgOpponentDiff, 3), 'opponent minus my rating')}
+        </div></div>
+        <div class="dupr-insights-section"><h3>Strength matchups</h3><div class="dupr-metrics">
+          ${summary.partnerSamples ? metric('Stronger partner W-L', recordLine(summary.strongerPartner)) : ''}
+          ${summary.partnerSamples ? metric('Weaker partner W-L', recordLine(summary.weakerPartner)) : ''}
+          ${metric('Stronger opponents W-L', recordLine(summary.strongerOpponents), 'Opp avg. vs me')}
+          ${metric('Weaker opponents W-L', recordLine(summary.weakerOpponents), 'Opp avg. vs me')}
         </div></div>
         <div class="dupr-insights-section"><h3>Rating upsets</h3><div class="dupr-insights">
           ${insight('Biggest upset delivered', summary.biggestUpsetDelivered ? `${formatSigned(summary.biggestUpsetDelivered.ratingGap, 2)} rating gap` : 'N/A', summary.biggestUpsetDelivered)}
