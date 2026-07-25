@@ -676,11 +676,12 @@
       @media(max-width:900px){.dupr-grid{grid-template-columns:1fr}.dupr-shell{padding:18px 14px 40px}}
       @media(max-width:1100px){.dupr-metrics{grid-template-columns:repeat(2,1fr)}.dupr-insights{grid-template-columns:1fr 1fr}.dupr-insight:nth-child(2){border-right:0}.dupr-insight:nth-child(-n+2){border-bottom:1px solid #e2e7e8}}
       @media(max-width:560px){.dupr-overview{grid-template-columns:1fr 1fr}.dupr-overview div:nth-child(2){border-right:0}.dupr-metrics{grid-template-columns:1fr 1fr}.dupr-charts{grid-template-columns:1fr}.dupr-section-title{align-items:start}}
+      @media print{body>*:not(#dupr-summary){display:none!important}#dupr-summary{position:static!important;overflow:visible!important;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.dupr-header,.dupr-tabs,#dupr-reopen,#dupr-analyse{display:none!important}.dupr-shell{max-width:none;padding:0}.dupr-panel{border:0;padding:0}.dupr-panel[hidden]{display:block!important}.dupr-panel+.dupr-panel{break-before:page}.dupr-overview,.dupr-section-title,.dupr-metrics,.dupr-insights,.dupr-charts,.dupr-events{break-inside:avoid}}
     `;
     const summary = document.createElement('div');
     summary.id = 'dupr-summary';
     summary.innerHTML = `<main class="dupr-shell">
-      <header class="dupr-header"><div class="dupr-actions"><button type="button" data-action="refresh">Refresh data</button><button type="button" data-action="close">Show original</button></div></header>
+      <header class="dupr-header"><div class="dupr-actions"><button type="button" data-action="pdf">Save PDF</button><button type="button" data-action="refresh">Refresh data</button><button type="button" data-action="close">Show original</button></div></header>
       <section class="dupr-overview"><div><span>Total games</span><strong>${totalGames}</strong></div><div><span>Overall record</span><strong>${totalWins}&ndash;${totalGames - totalWins}</strong></div><div><span>Singles win rate</span><strong>${Math.round(singles.winRate * 100)}%</strong></div><div><span>Doubles win rate</span><strong>${Math.round(doubles.winRate * 100)}%</strong></div></section>
       <div class="dupr-tabs" role="tablist">
         <button type="button" class="dupr-tab" data-tab="Doubles" role="tab" aria-selected="true">Doubles</button>
@@ -692,6 +693,7 @@
     reopen.id = 'dupr-reopen'; reopen.type = 'button'; reopen.textContent = 'Show stats'; reopen.hidden = true;
     document.head.appendChild(style); document.body.append(summary, reopen);
     attachMatchDetails(summary, matches);
+    summary.querySelector('[data-action="pdf"]').addEventListener('click', () => printReport());
     summary.querySelector('[data-action="close"]').addEventListener('click', () => { summary.hidden = true; reopen.hidden = false; });
     summary.querySelector('[data-action="refresh"]').addEventListener('click', () => { summary.remove(); showSummary(parseMatches()); });
     reopen.addEventListener('click', () => { summary.hidden = false; reopen.hidden = true; redraw(); });
@@ -713,6 +715,19 @@
 
     function redraw() {
       drawPanel([...panels.values()].find(panel => !panel.hidden));
+    }
+
+    function printReport() {
+      // Both charts only render when their panel has layout, so reveal and draw both before printing.
+      const restore = [...panels.values()].filter(panel => panel.hidden);
+      for (const panel of panels.values()) { panel.hidden = false; drawPanel(panel); }
+      const cleanup = () => {
+        window.removeEventListener('afterprint', cleanup);
+        for (const panel of restore) panel.hidden = true;
+        redraw();
+      };
+      window.addEventListener('afterprint', cleanup);
+      window.print();
     }
 
     for (const tab of tabs) tab.addEventListener('click', () => selectTab(tab.dataset.tab));
