@@ -1,7 +1,7 @@
 /* ==UserStyle==
 @name          Amazon Video Cleaner
 @namespace      github.com/openstyles/stylus
-@version        2.0.0
+@version        2.1
 @description    Dim distracting overlays/controls in the Prime Video web player
 @author         Me
 ==/UserStyle== */
@@ -38,6 +38,20 @@
     .atvwebplayersdk-nextupcard-wrapper,
     .atvwebplayersdk-action-buttons {
         opacity: 0.3 !important;
+    }
+
+    /* Hide the dark dimming overlay injected over the video on mouse-move.
+       It's the full-bleed, gradient-only layer inside the player's layer
+       stack (no player controls of its own). Identify it structurally via
+       stable atvwebplayersdk-* hooks instead of the hashed atomic class
+       names (f8hspre/f1makowq/fpqiyer…) which reshuffle across builds:
+       - the layer stack = the container holding the loading-spinner layer
+         or the regulatory overlay;
+       - the dimming overlay = its child that is neither a player component
+         nor contains one (only the top/bottom dark gradients). */
+    .atvwebplayersdk-player-container div:has(> div > .atvwebplayersdk-loadingspinner-overlay, > .atvwebplayersdk-regulatory-overlay)
+    > div:not([class*="atvwebplayersdk"]):not(:has([class*="atvwebplayersdk"])) {
+        display: none !important;
     }
 
 }
