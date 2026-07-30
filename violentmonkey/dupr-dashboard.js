@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DUPR Dashboard Performance Summary
 // @namespace    violentmonkey.github.io
-// @version      2.3
+// @version      2.4
 // @author       ohlookcake
 // @description  Loads every DUPR result and presents separate singles and doubles performance reports
 // @match        https://dashboard.dupr.com/*
@@ -212,6 +212,29 @@
         ratingGap: Number.isFinite(myTeamAvg) && Number.isFinite(oppTeamAvg) ? oppTeamAvg - myTeamAvg : null
       };
     }).filter(match => match.type && match.date && !Number.isNaN(match.date.getTime()));
+  }
+
+  function reliabilityFor(discipline) {
+    // The sidebar rating card for each discipline pairs the rating with a 0-100 reliability gauge.
+    for (const label of document.querySelectorAll('span')) {
+      if (label.textContent.trim() !== discipline) continue;
+      let node = label.parentElement;
+      for (let depth = 0; node && depth < 5; depth++, node = node.parentElement) {
+        const hasRating = [...node.querySelectorAll('p')].some(p => /^\d\.\d{3}$/.test(p.textContent.trim()));
+        const gauge = [...node.querySelectorAll('span')]
+          .map(span => span.textContent.trim())
+          .find(text => text !== discipline && /^\d{1,3}$/.test(text) && Number(text) <= 100);
+        if (hasRating && gauge) return Number(gauge);
+      }
+    }
+    return null;
+  }
+
+  function parseRatingMeta() {
+    return {
+      Doubles: { reliability: reliabilityFor('Doubles') },
+      Singles: { reliability: reliabilityFor('Singles') }
+    };
   }
 
   function longestStreak(matches, wantedResult) {
@@ -481,12 +504,27 @@
       </div>`;
   }
 
-  function disciplinePanel(type, summary) {
+  function reliabilityDonut(value) {
+    if (!Number.isFinite(value)) return '';
+    const radius = 15.5;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference * (1 - Math.max(0, Math.min(100, value)) / 100);
+    return `<figure class="dupr-reliability" title="Rating reliability">
+      <svg viewBox="0 0 36 36" role="img" aria-label="${value}% reliability">
+        <circle class="dupr-reliability-track" cx="18" cy="18" r="${radius}"></circle>
+        <circle class="dupr-reliability-arc" cx="18" cy="18" r="${radius}" stroke-dasharray="${circumference.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}" transform="rotate(-90 18 18)"></circle>
+        <text class="dupr-reliability-value" x="18" y="18">${value}</text>
+      </svg>
+      <figcaption>Reliability</figcaption>
+    </figure>`;
+  }
+
+  function disciplinePanel(type, summary, meta = {}) {
     if (!summary.games) return `<section class="dupr-panel" data-discipline="${type}"><h2>${type}</h2><p class="dupr-empty">No ${type.toLowerCase()} results found.</p></section>`;
     const streak = summary.currentStreak ? `${summary.currentStreak} ${summary.currentResult ? 'W' : 'L'}` : 'N/A';
     return `
       <section class="dupr-panel" data-discipline="${type}">
-        <div class="dupr-section-title"><div><span class="dupr-kicker">${type}</span><h2>${summary.games} rated games</h2></div><div class="dupr-headline-stats"><span>Current DUPR</span><strong>${summary.currentRating?.toFixed(3) || 'N/A'}</strong><small>${Math.round(summary.winRate * 100)}% win rate</small></div></div>
+        <div class="dupr-section-title"><div><span class="dupr-kicker">${type}</span><h2>${summary.games} rated games</h2></div><div class="dupr-headline-stats"><div class="dupr-headline-copy"><strong>${summary.currentRating?.toFixed(3) || 'N/A'}</strong><small>${Math.round(summary.winRate * 100)}% win rate</small></div>${reliabilityDonut(meta.reliability)}</div></div>
         <div class="dupr-winbar"><i style="width:${summary.winRate * 100}%"></i></div>
         <div class="dupr-metrics">
           ${metric('Record', `${summary.wins}&ndash;${summary.losses}`, 'wins - losses')}
@@ -657,6 +695,7 @@
     document.querySelector('#dupr-summary-styles')?.remove();
     const singles = summarise(matches.filter(match => match.type === 'Singles'));
     const doubles = summarise(matches.filter(match => match.type === 'Doubles'));
+    const ratingMeta = parseRatingMeta();
     const totalWins = singles.wins + doubles.wins;
     const totalGames = matches.length;
     const style = document.createElement('style');
@@ -668,7 +707,7 @@
       .dupr-kicker{color:#087f8c;font-size:12px;font-weight:800;text-transform:uppercase}.dupr-actions{display:flex;gap:8px}.dupr-actions button{border:1px solid #c7d0d3;background:#fff;color:#18343d;border-radius:6px;padding:9px 13px;font-weight:700;cursor:pointer}
       .dupr-overview{display:grid;grid-template-columns:repeat(4,1fr);background:#18343d;color:white;border-radius:8px;margin-bottom:18px;overflow:hidden}.dupr-overview div{padding:18px 20px;border-right:1px solid #34505a}.dupr-overview div:last-child{border:0}.dupr-overview span{display:block;color:#b9c7cb;font-size:11px;text-transform:uppercase}.dupr-overview strong{font-size:25px}
       .dupr-tabs{display:flex;gap:6px;margin-bottom:16px}.dupr-tab{border:1px solid #c7d0d3;background:#fff;color:#52666d;border-radius:6px;padding:9px 20px;font-weight:700;font-size:14px;cursor:pointer}.dupr-tab[aria-selected="true"]{background:#18343d;color:#fff;border-color:#18343d}.dupr-panel[hidden]{display:none}
-      .dupr-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.dupr-panel{background:white;border:1px solid #dce3e4;border-radius:8px;padding:22px;min-width:0}.dupr-section-title{display:flex;justify-content:space-between;align-items:end}.dupr-section-title h2{font-size:20px;margin:3px 0}.dupr-headline-stats{text-align:right}.dupr-headline-stats span,.dupr-headline-stats small{display:block;color:#718086;font-size:10px}.dupr-headline-stats strong{display:block;color:#087f8c;font-size:28px;line-height:1.1}.dupr-winbar{height:7px;background:#f0d9d4;margin:14px 0 18px}.dupr-winbar i{display:block;height:100%;background:#087f8c}
+      .dupr-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.dupr-panel{background:white;border:1px solid #dce3e4;border-radius:8px;padding:22px;min-width:0}.dupr-section-title{display:flex;justify-content:space-between;align-items:end}.dupr-section-title h2{font-size:20px;margin:3px 0}.dupr-headline-stats{display:flex;align-items:center;justify-content:flex-end;gap:14px}.dupr-headline-copy{text-align:right}.dupr-headline-stats span,.dupr-headline-stats small{display:block;color:#718086;font-size:10px}.dupr-headline-stats strong{display:block;color:#087f8c;font-size:34px;line-height:1.1}.dupr-reliability{margin:0;display:flex;flex-direction:column;align-items:center;gap:3px}.dupr-reliability svg{display:block;width:46px;height:46px}.dupr-reliability-track{fill:none;stroke:#e2e7e8;stroke-width:3.5}.dupr-reliability-arc{fill:none;stroke:#087f8c;stroke-width:3.5;stroke-linecap:round}.dupr-reliability-value{fill:#18343d;font-size:11px;font-weight:800;text-anchor:middle;dominant-baseline:central}.dupr-reliability figcaption{color:#718086;font-size:9px;font-weight:700;text-transform:uppercase}.dupr-winbar{height:7px;background:#f0d9d4;margin:14px 0 18px}.dupr-winbar i{display:block;height:100%;background:#087f8c}
       .dupr-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#e2e7e8;border:1px solid #e2e7e8}.dupr-metric{background:#fff;padding:13px;min-width:0}.dupr-metric span,.dupr-metric small{display:block;color:#718086;font-size:11px}.dupr-metric strong{display:block;font-size:17px;margin:2px 0;overflow-wrap:anywhere}.dupr-insights-section{margin-top:20px}.dupr-insights-section h3{font-size:12px;margin:0 0 8px;text-transform:uppercase;color:#52666d}.dupr-insights{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #e2e7e8}.dupr-insight{position:relative;padding:11px;border-right:1px solid #e2e7e8;min-width:0}.dupr-insight:last-child{border:0}.dupr-insight span,.dupr-insight small{display:block;color:#718086;font-size:10px}.dupr-insight>strong{display:block;font-size:15px;margin:3px 0;overflow-wrap:anywhere}.dupr-insight[data-match-id]{cursor:help}.dupr-insight[data-match-id]:focus{outline:2px solid #087f8c;outline-offset:-2px}.dupr-match-details{display:none;position:absolute;z-index:10;left:0;bottom:calc(100% + 7px);width:270px;padding:10px 12px;background:#18343d;color:#fff;border-radius:6px;box-shadow:0 5px 18px #0004}.dupr-insight:nth-child(4n) .dupr-match-details{left:auto;right:0}.dupr-insight:hover>.dupr-match-details,.dupr-insight:focus>.dupr-match-details{display:block}.dupr-match-details p{margin:0 0 7px}.dupr-match-details p:last-child{margin:0}.dupr-match-details p>span{color:#aebfc4;font-size:9px;text-transform:uppercase}.dupr-match-details p>strong{display:block;margin-top:1px;color:#fff;font-size:11px;line-height:1.35}.dupr-charts{display:grid;grid-template-columns:1fr;gap:20px;margin-top:20px}.dupr-charts figure{margin:0;min-width:0}.dupr-charts figcaption{font-size:12px;font-weight:800;margin-bottom:8px}.dupr-charts figcaption small{color:#718086;font-weight:500;margin-left:5px}.dupr-charts canvas{display:block;width:100%;height:160px}.dupr-charts .dupr-rating-chart{position:relative}.dupr-charts .dupr-rating-chart canvas{height:260px;cursor:crosshair;touch-action:pan-y}.dupr-empty{color:#718086}
       .dupr-events{overflow-x:auto}.dupr-events-table{width:100%;border-collapse:collapse;font-size:13px}.dupr-events-table th{text-align:right;color:#52666d;font-size:10px;font-weight:800;text-transform:uppercase;padding:8px 10px;border-bottom:2px solid #e2e7e8;white-space:nowrap}.dupr-events-table th:first-child{text-align:left}.dupr-events-table td{padding:9px 10px;border-bottom:1px solid #eef1f2;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.dupr-events-table tbody tr:last-child td{border-bottom:0}.dupr-events-table tbody tr:hover{background:#f7f9f9}.dupr-event-name{text-align:left!important;white-space:normal!important}.dupr-event-name strong{display:block;font-size:13px}.dupr-event-name small{display:block;color:#718086;font-size:10px}.dupr-event-partner{text-align:left!important;color:#18343d}.dupr-event-partner a{color:#087f8c;font-weight:600;text-decoration:none}.dupr-event-partner a:hover{text-decoration:underline}.dupr-net-pos{color:#087f8c;font-weight:700}.dupr-net-neg{color:#e85d3f;font-weight:700}
       .dupr-chart-hover[hidden]{display:none}.dupr-chart-hover>i{position:absolute;width:1px;background:#18343d55;pointer-events:none}.dupr-chart-hover>b{position:absolute;width:12px;height:12px;border:3px solid #fff;border-radius:50%;background:#e85d3f;box-shadow:0 0 0 2px #18343d;transform:translate(-50%,-50%);pointer-events:none}.dupr-chart-hover>div{position:absolute;z-index:2;width:210px;padding:10px 12px;background:#18343d;color:#fff;border-radius:6px;box-shadow:0 5px 18px #0004;transform:translate(10px,calc(-100% - 10px));pointer-events:none}.dupr-chart-hover>div.dupr-tooltip-left{transform:translate(calc(-100% - 10px),calc(-100% - 10px))}.dupr-chart-hover strong,.dupr-chart-hover span,.dupr-chart-hover small{display:block}.dupr-chart-hover strong{font-size:15px}.dupr-chart-hover span{margin-top:2px;color:#dce5e7;font-size:11px}.dupr-chart-hover small{margin-top:6px;color:#fff;font-size:11px;line-height:1.35}
@@ -687,7 +726,7 @@
         <button type="button" class="dupr-tab" data-tab="Doubles" role="tab" aria-selected="true">Doubles</button>
         <button type="button" class="dupr-tab" data-tab="Singles" role="tab" aria-selected="false">Singles</button>
       </div>
-      <div class="dupr-panels">${disciplinePanel('Doubles', doubles)}${disciplinePanel('Singles', singles)}</div>
+      <div class="dupr-panels">${disciplinePanel('Doubles', doubles, ratingMeta.Doubles)}${disciplinePanel('Singles', singles, ratingMeta.Singles)}</div>
     </main>`;
     const reopen = document.createElement('button');
     reopen.id = 'dupr-reopen'; reopen.type = 'button'; reopen.textContent = 'Show stats'; reopen.hidden = true;
