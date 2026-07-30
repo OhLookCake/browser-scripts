@@ -395,6 +395,7 @@
       avgMargin: margins.length ? margins.reduce((sum, value) => sum + value, 0) / margins.length : null,
       closeRate: scored.length ? scored.filter(match => Math.abs(match.ownScore - match.opponentScore) <= 2).length / scored.length : null,
       closeGames: scored.filter(match => Math.abs(match.ownScore - match.opponentScore) <= 2).length,
+      closeWins: scored.filter(match => Math.abs(match.ownScore - match.opponentScore) <= 2 && match.won).length,
       scoredGames: scored.length,
       bestWinStreak: longestStreak(chronological, true),
       currentStreak,
@@ -545,7 +546,7 @@
           ${metric('Record', `${summary.wins}&ndash;${summary.losses}`, 'wins - losses')}
           ${metric('Average points', `${summary.avgPointsFor?.toFixed(1) || 'N/A'} / ${summary.avgPointsAgainst?.toFixed(1) || 'N/A'}`, 'for / against')}
           ${metric('Average margin', formatSigned(summary.avgMargin, 1), `${summary.pointsFor}-${summary.pointsAgainst} total points`)}
-          ${metric('Close games (≤2)', summary.closeRate === null ? 'N/A' : `${summary.closeGames} (${Math.round(summary.closeRate * 100)}%)`)}
+          ${metric('Close games (≤2)', summary.closeRate === null ? 'N/A' : `${summary.closeGames} (${Math.round(summary.closeRate * 100)}%)`, summary.closeGames ? `W-L: ${summary.closeWins}&ndash;${summary.closeGames - summary.closeWins} (${Math.round(summary.closeWins / summary.closeGames * 100)}%)` : '')}
           ${metric('Best win streak', summary.bestWinStreak, `Current: ${streak}`)}
           ${metric('Recent form', `${summary.recentWins}-${summary.recentGames - summary.recentWins}`, `last ${summary.recentGames} games`)}
         </div>
