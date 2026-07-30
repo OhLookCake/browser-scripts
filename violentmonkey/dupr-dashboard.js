@@ -671,24 +671,33 @@
     canvas.addEventListener('pointermove', event => {
       const chart = canvas._duprChart;
       if (!chart) return;
-      const rect = canvas.getBoundingClientRect();
-      const localX = event.clientX - rect.left;
+      // Map between chart-space (the CSS size used when drawing) and the canvas's live
+      // rendered size, so the marker tracks the curve even if the canvas was resized after
+      // it was drawn. Overlay positions are expressed relative to the figure (the marker's
+      // positioned ancestor).
+      const canvasRect = canvas.getBoundingClientRect();
+      const figureRect = figure.getBoundingClientRect();
+      const scaleX = canvasRect.width / chart.width;
+      const scaleY = canvasRect.height / chart.height;
+      const localX = (event.clientX - canvasRect.left) / scaleX;
       const plotWidth = chart.width - chart.padding.left - chart.padding.right;
       const rawIndex = (localX - chart.padding.left) / plotWidth * (chart.points.length - 1);
       const index = Math.max(0, Math.min(chart.points.length - 1, Math.round(rawIndex)));
       const point = chart.points[index];
-      const pointX = chart.x(index);
-      const pointY = chart.y(point.rating);
-      const canvasLeft = canvas.offsetLeft;
-      const canvasTop = canvas.offsetTop;
+      const originX = canvasRect.left - figureRect.left;
+      const originY = canvasRect.top - figureRect.top;
+      const markerX = originX + chart.x(index) * scaleX;
+      const markerY = originY + chart.y(point.rating) * scaleY;
+      const plotTop = originY + chart.padding.top * scaleY;
+      const plotHeight = (chart.height - chart.padding.top - chart.padding.bottom) * scaleY;
 
       hover.hidden = false;
-      hover.querySelector('i').style.cssText = `left:${canvasLeft + pointX}px;top:${canvasTop + chart.padding.top}px;height:${chart.height - chart.padding.top - chart.padding.bottom}px`;
-      hover.querySelector('b').style.cssText = `left:${canvasLeft + pointX}px;top:${canvasTop + pointY}px`;
+      hover.querySelector('i').style.cssText = `left:${markerX}px;top:${plotTop}px;height:${plotHeight}px`;
+      hover.querySelector('b').style.cssText = `left:${markerX}px;top:${markerY}px`;
       const tooltip = hover.querySelector('div');
-      tooltip.style.left = `${canvasLeft + pointX}px`;
-      tooltip.style.top = `${canvasTop + pointY}px`;
-      tooltip.classList.toggle('dupr-tooltip-left', pointX > chart.width * 0.62);
+      tooltip.style.left = `${markerX}px`;
+      tooltip.style.top = `${markerY}px`;
+      tooltip.classList.toggle('dupr-tooltip-left', chart.x(index) > chart.width * 0.62);
       tooltip.querySelector('strong').textContent = `DUPR ${point.rating.toFixed(3)}`;
       tooltip.querySelector('span').textContent = point.date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
       tooltip.querySelector('small').textContent = point.eventName;
