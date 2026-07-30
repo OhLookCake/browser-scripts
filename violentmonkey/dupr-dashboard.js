@@ -296,7 +296,9 @@
     };
   }
 
-  function groupEvents(matches) {
+  function clusterMatches(matches) {
+    // Group matches into tournaments: same calendar day, plus an event name that matches any
+    // match already in the cluster. Clusters come out in chronological order of first appearance.
     // DUPR supplies cards newest-first; reverse source order for games on the same date.
     const chronological = [...matches].sort((a, b) => a.date - b.date || b.sourceIndex - a.sourceIndex);
     const byDate = new Map();
@@ -306,18 +308,22 @@
       byDate.get(dateKey).push(match);
     }
 
-    const events = [];
+    const clusters = [];
     for (const dayMatches of byDate.values()) {
-      const clusters = [];
+      const dayClusters = [];
       for (const match of dayMatches) {
         const name = comparableEventName(match.eventName);
-        const cluster = clusters.find(group => group.some(existing => likelySameEvent(comparableEventName(existing.eventName), name)));
+        const cluster = dayClusters.find(group => group.some(existing => likelySameEvent(comparableEventName(existing.eventName), name)));
         if (cluster) cluster.push(match);
-        else clusters.push([match]);
+        else dayClusters.push([match]);
       }
-      for (const cluster of clusters) events.push(buildEvent(cluster));
+      clusters.push(...dayClusters);
     }
+    return clusters;
+  }
 
+  function groupEvents(matches) {
+    const events = clusterMatches(matches).map(buildEvent);
     // Most recent first; within a date the most recent card (lowest source index) leads.
     return events.sort((a, b) => b.date - a.date || a.minSourceIndex - b.minSourceIndex);
   }
@@ -616,22 +622,13 @@
         context.fillStyle = '#66767c'; context.textAlign = 'right';
         context.fillText(value.toFixed(1), padding.left - 7, rowY + 4);
       }
-      // Assign each point a tournament index; a new tournament begins when the date or the event
-      // name no longer matches the previous match, mirroring how the tournament log groups games.
-      const tourneyIndex = [];
-      let currentTourney = -1;
-      let previous = null;
-      for (const point of points) {
-        const sameDay = previous
-          && previous.date.getFullYear() === point.date.getFullYear()
-          && previous.date.getMonth() === point.date.getMonth()
-          && previous.date.getDate() === point.date.getDate();
-        const sameEvent = previous
-          && likelySameEvent(comparableEventName(previous.eventName), comparableEventName(point.eventName));
-        if (!sameDay || !sameEvent) currentTourney++;
-        tourneyIndex.push(currentTourney);
-        previous = point;
-      }
+      // Colour each point by the tournament it belongs to, using the same grouping as the
+      // tournament log so the two stay consistent.
+      const clusterByMatch = new Map();
+      clusterMatches(points).forEach((cluster, clusterIndex) => {
+        for (const match of cluster) clusterByMatch.set(match, clusterIndex);
+      });
+      const tourneyIndex = points.map(point => clusterByMatch.get(point) ?? 0);
       const colorForTourney = index => TOURNEY_COLORS[index % TOURNEY_COLORS.length];
 
       // Each segment takes the colour of the tournament its later point belongs to, so the line
