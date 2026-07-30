@@ -439,41 +439,47 @@
     return match?.date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) || 'No data';
   }
 
-  function insight(label, value, match) {
-    const matchAttribute = match?.id ? ` data-match-id="${match.id}" tabindex="0"` : '';
+  function insight(label, value, match, showGap = false) {
+    const matchAttribute = match?.id
+      ? ` data-match-id="${match.id}" tabindex="0"${showGap ? ' data-show-gap="1"' : ''}` : '';
     return `<div class="dupr-insight"${matchAttribute}><span>${label}</span><strong>${value}</strong><small>${matchDate(match)}</small></div>`;
+  }
+
+  function eventInsight(label, value, event) {
+    if (!event) return `<div class="dupr-insight"><span>${label}</span><strong>${value}</strong><small>${matchDate(event)}</small></div>`;
+    const details = `<div class="dupr-match-details"><p class="dupr-detail-title">${event.name}</p><p>${matchDate(event)}</p></div>`;
+    return `<div class="dupr-insight" tabindex="0"><span>${label}</span><strong>${value}</strong><small>${matchDate(event)}</small>${details}</div>`;
   }
 
   function attachMatchDetails(root, matches) {
     const matchesById = new Map(matches.map(match => [match.id, match]));
+    const withRating = player => Number.isFinite(player.rating) ? `${player.name} (${player.rating.toFixed(3)})` : player.name;
     for (const element of root.querySelectorAll('.dupr-insight[data-match-id]')) {
       const match = matchesById.get(element.dataset.matchId);
       if (!match) continue;
       const tooltip = document.createElement('div');
       tooltip.className = 'dupr-match-details';
 
-      const addRow = (label, value) => {
-        if (!value) return;
-        const row = document.createElement('p');
-        const term = document.createElement('span');
-        const detail = document.createElement('strong');
-        term.textContent = label;
-        detail.textContent = value;
-        row.append(term, detail);
-        tooltip.appendChild(row);
+      const addLine = (text, className) => {
+        if (!text) return;
+        const line = document.createElement('p');
+        if (className) line.className = className;
+        line.textContent = text;
+        tooltip.appendChild(line);
       };
 
-      const withRatings = players => players
-        .map(player => Number.isFinite(player.rating) ? `${player.name} (${player.rating.toFixed(3)})` : player.name)
-        .join(', ') || 'Unknown';
+      const me = Number.isFinite(match.rating) ? `You (${match.rating.toFixed(3)})` : 'You';
+      const team = [me, ...match.partners.map(withRating)].join(' & ');
+      const opponents = match.opponents.map(withRating).join(' & ') || 'Unknown';
+      const score = Number.isFinite(match.ownScore) && Number.isFinite(match.opponentScore)
+        ? `${match.ownScore}-${match.opponentScore}` : null;
 
-      addRow('Tournament', match.eventName);
-      if (match.type === 'Doubles') addRow('Partner', withRatings(match.partners));
-      addRow(match.type === 'Doubles' ? 'Opponents' : 'Opponent', withRatings(match.opponents));
-      addRow('Score', Number.isFinite(match.ownScore) && Number.isFinite(match.opponentScore)
-        ? `${match.ownScore}-${match.opponentScore}` : 'Unavailable');
-      if (Number.isFinite(match.ratingGap)) {
-        addRow('Rating gap', `${formatSigned(match.ratingGap, 2)} (you ${match.myTeamAvg.toFixed(2)} vs ${match.oppTeamAvg.toFixed(2)})`);
+      addLine(match.eventName, 'dupr-detail-title');
+      addLine(team);
+      addLine(`v ${opponents}`);
+      addLine(score);
+      if (element.dataset.showGap && Number.isFinite(match.ratingGap)) {
+        addLine(`${formatSigned(match.ratingGap, 2)} rating gap (you ${match.myTeamAvg.toFixed(2)} vs ${match.oppTeamAvg.toFixed(2)})`);
       }
       element.appendChild(tooltip);
     }
@@ -550,8 +556,8 @@
           ${insight('Avg movement per tournament', formatSigned(summary.avgTourneyMovement, 3), summary.tourneyMovementSamples ? `across ${summary.tourneyMovementSamples} tournaments` : '')}
           ${insight('Biggest single game gain', formatSigned(summary.biggestGain?.delta, 3), summary.biggestGain)}
           ${insight('Biggest single game loss', formatSigned(summary.biggestLoss?.delta, 3), summary.biggestLoss)}
-          ${insight('Biggest single tourney gain', formatSigned(summary.biggestTourneyGain?.net, 3), summary.biggestTourneyGain)}
-          ${insight('Biggest single tourney loss', formatSigned(summary.biggestTourneyLoss?.net, 3), summary.biggestTourneyLoss)}
+          ${eventInsight('Biggest single tourney gain', formatSigned(summary.biggestTourneyGain?.net, 3), summary.biggestTourneyGain)}
+          ${eventInsight('Biggest single tourney loss', formatSigned(summary.biggestTourneyLoss?.net, 3), summary.biggestTourneyLoss)}
         </div></div>
         <div class="dupr-insights-section"><h3>Score highlights</h3><div class="dupr-insights">
           ${insight('Biggest win (to 11)', summary.biggestWin ? `+${summary.biggestWin.ownScore - summary.biggestWin.opponentScore} points` : 'N/A', summary.biggestWin)}
@@ -572,8 +578,8 @@
           ${metric('Weaker opponents W-L', recordLine(summary.weakerOpponents), 'Opp avg. vs me')}
         </div></div>
         <div class="dupr-insights-section"><h3>Rating upsets</h3><div class="dupr-insights">
-          ${insight('Biggest upset delivered', summary.biggestUpsetDelivered ? `${formatSigned(summary.biggestUpsetDelivered.ratingGap, 2)} rating gap` : 'N/A', summary.biggestUpsetDelivered)}
-          ${insight('Biggest upset received', summary.biggestUpsetReceived ? `${formatSigned(summary.biggestUpsetReceived.ratingGap, 2)} rating gap` : 'N/A', summary.biggestUpsetReceived)}
+          ${insight('Biggest upset delivered', summary.biggestUpsetDelivered ? `${formatSigned(summary.biggestUpsetDelivered.ratingGap, 2)} rating gap` : 'N/A', summary.biggestUpsetDelivered, true)}
+          ${insight('Biggest upset received', summary.biggestUpsetReceived ? `${formatSigned(summary.biggestUpsetReceived.ratingGap, 2)} rating gap` : 'N/A', summary.biggestUpsetReceived, true)}
         </div></div>
         <div class="dupr-charts">
           <figure class="dupr-rating-chart"><figcaption>Rating history <small>earliest to latest</small></figcaption><canvas data-chart="rating" aria-label="${type} rating history from earliest to latest"></canvas></figure>
@@ -725,14 +731,14 @@
       .dupr-overview{display:grid;grid-template-columns:repeat(4,1fr);background:#18343d;color:white;border-radius:8px;margin-bottom:18px;overflow:hidden}.dupr-overview div{padding:18px 20px;border-right:1px solid #34505a}.dupr-overview div:last-child{border:0}.dupr-overview span{display:block;color:#b9c7cb;font-size:11px;text-transform:uppercase}.dupr-overview strong{font-size:25px}
       .dupr-tabs{display:flex;gap:6px;margin-bottom:16px}.dupr-tab{border:1px solid #c7d0d3;background:#fff;color:#52666d;border-radius:6px;padding:9px 20px;font-weight:700;font-size:14px;cursor:pointer}.dupr-tab[aria-selected="true"]{background:#18343d;color:#fff;border-color:#18343d}.dupr-panel[hidden]{display:none}
       .dupr-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.dupr-panel{background:white;border:1px solid #dce3e4;border-radius:8px;padding:22px;min-width:0}.dupr-section-title{display:flex;justify-content:space-between;align-items:end}.dupr-section-title h2{font-size:20px;margin:3px 0}.dupr-headline-stats{display:flex;align-items:center;justify-content:flex-end;gap:14px}.dupr-headline-copy{text-align:right}.dupr-headline-stats span,.dupr-headline-stats small{display:block;color:#718086;font-size:10px}.dupr-headline-stats strong{display:block;color:#087f8c;font-size:34px;line-height:1.1}.dupr-reliability{margin:0;display:flex;flex-direction:column;align-items:center;gap:3px}.dupr-reliability svg{display:block;width:46px;height:46px}.dupr-reliability-track{fill:none;stroke:#e2e7e8;stroke-width:3.5}.dupr-reliability-arc{fill:none;stroke:#087f8c;stroke-width:3.5;stroke-linecap:round}.dupr-reliability-value{fill:#18343d;font-size:11px;font-weight:800;text-anchor:middle;dominant-baseline:central}.dupr-reliability figcaption{color:#718086;font-size:9px;font-weight:700;text-transform:uppercase}.dupr-winbar{height:7px;background:#f0d9d4;margin:14px 0 18px}.dupr-winbar i{display:block;height:100%;background:#087f8c}
-      .dupr-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#e2e7e8;border:1px solid #e2e7e8}.dupr-metric{background:#fff;padding:13px;min-width:0}.dupr-metric span,.dupr-metric small{display:block;color:#718086;font-size:11px}.dupr-metric strong{display:block;font-size:17px;margin:2px 0;overflow-wrap:anywhere}.dupr-insights-section{margin-top:20px}.dupr-insights-section h3{font-size:12px;margin:0 0 8px;text-transform:uppercase;color:#52666d}.dupr-insights{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #e2e7e8}.dupr-insights-rating .dupr-insight:nth-child(-n+4){border-bottom:1px solid #e2e7e8}.dupr-insights-rating .dupr-insight:nth-child(4n){border-right:0}.dupr-insight{position:relative;padding:11px;border-right:1px solid #e2e7e8;min-width:0}.dupr-insight:last-child{border:0}.dupr-insight span,.dupr-insight small{display:block;color:#718086;font-size:10px}.dupr-insight>strong{display:block;font-size:15px;margin:3px 0;overflow-wrap:anywhere}.dupr-insight[data-match-id]{cursor:help}.dupr-insight[data-match-id]:focus{outline:2px solid #087f8c;outline-offset:-2px}.dupr-match-details{display:none;position:absolute;z-index:10;left:0;bottom:calc(100% + 7px);width:270px;padding:10px 12px;background:#18343d;color:#fff;border-radius:6px;box-shadow:0 5px 18px #0004}.dupr-insight:nth-child(4n) .dupr-match-details{left:auto;right:0}.dupr-insight:hover>.dupr-match-details,.dupr-insight:focus>.dupr-match-details{display:block}.dupr-match-details p{margin:0 0 7px}.dupr-match-details p:last-child{margin:0}.dupr-match-details p>span{color:#aebfc4;font-size:9px;text-transform:uppercase}.dupr-match-details p>strong{display:block;margin-top:1px;color:#fff;font-size:11px;line-height:1.35}.dupr-charts{display:grid;grid-template-columns:1fr;gap:20px;margin-top:20px}.dupr-charts figure{margin:0;min-width:0}.dupr-charts figcaption{font-size:12px;font-weight:800;margin-bottom:8px}.dupr-charts figcaption small{color:#718086;font-weight:500;margin-left:5px}.dupr-charts canvas{display:block;width:100%;height:160px}.dupr-charts .dupr-rating-chart{position:relative}.dupr-charts .dupr-rating-chart canvas{height:260px;cursor:crosshair;touch-action:pan-y}.dupr-empty{color:#718086}
+      .dupr-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#e2e7e8;border:1px solid #e2e7e8}.dupr-metric{background:#fff;padding:13px;min-width:0}.dupr-metric span,.dupr-metric small{display:block;color:#718086;font-size:11px}.dupr-metric strong{display:block;font-size:17px;margin:2px 0;overflow-wrap:anywhere}.dupr-insights-section{margin-top:20px}.dupr-insights-section h3{font-size:12px;margin:0 0 8px;text-transform:uppercase;color:#52666d}.dupr-insights{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #e2e7e8}.dupr-insights-rating .dupr-insight:nth-child(-n+4){border-bottom:1px solid #e2e7e8}.dupr-insights-rating .dupr-insight:nth-child(4n){border-right:0}.dupr-insight{position:relative;padding:11px;border-right:1px solid #e2e7e8;min-width:0}.dupr-insight:last-child{border:0}.dupr-insight span,.dupr-insight small{display:block;color:#718086;font-size:10px}.dupr-insight>strong{display:block;font-size:15px;margin:3px 0;overflow-wrap:anywhere}.dupr-insight[tabindex]{cursor:help}.dupr-insight[tabindex]:focus{outline:2px solid #087f8c;outline-offset:-2px}.dupr-match-details{display:none;position:absolute;z-index:10;left:0;bottom:calc(100% + 7px);width:270px;padding:10px 12px;background:#18343d;color:#fff;border-radius:6px;box-shadow:0 5px 18px #0004}.dupr-insight:nth-child(4n) .dupr-match-details{left:auto;right:0}.dupr-insight:hover>.dupr-match-details,.dupr-insight:focus>.dupr-match-details{display:block}.dupr-match-details p{margin:0 0 4px;color:#dce5e7;font-size:11px;line-height:1.35}.dupr-match-details p:last-child{margin:0}.dupr-match-details .dupr-detail-title{margin-bottom:5px;color:#fff;font-weight:700}.dupr-charts{display:grid;grid-template-columns:1fr;gap:20px;margin-top:20px}.dupr-charts figure{margin:0;min-width:0}.dupr-charts figcaption{font-size:12px;font-weight:800;margin-bottom:8px}.dupr-charts figcaption small{color:#718086;font-weight:500;margin-left:5px}.dupr-charts canvas{display:block;width:100%;height:160px}.dupr-charts .dupr-rating-chart{position:relative}.dupr-charts .dupr-rating-chart canvas{height:260px;cursor:crosshair;touch-action:pan-y}.dupr-empty{color:#718086}
       .dupr-events{overflow-x:auto}.dupr-events-table{width:100%;border-collapse:collapse;font-size:13px}.dupr-events-table th{text-align:right;color:#52666d;font-size:10px;font-weight:800;text-transform:uppercase;padding:8px 10px;border-bottom:2px solid #e2e7e8;white-space:nowrap}.dupr-events-table th:first-child{text-align:left}.dupr-events-table td{padding:9px 10px;border-bottom:1px solid #eef1f2;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.dupr-events-table tbody tr:last-child td{border-bottom:0}.dupr-events-table tbody tr:hover{background:#f7f9f9}.dupr-event-name{text-align:left!important;white-space:normal!important}.dupr-event-name strong{display:block;font-size:13px}.dupr-event-name small{display:block;color:#718086;font-size:10px}.dupr-event-partner{text-align:left!important;color:#18343d}.dupr-event-partner a{color:#087f8c;font-weight:600;text-decoration:none}.dupr-event-partner a:hover{text-decoration:underline}.dupr-net-pos{color:#087f8c;font-weight:700}.dupr-net-neg{color:#e85d3f;font-weight:700}
       .dupr-chart-hover[hidden]{display:none}.dupr-chart-hover>i{position:absolute;width:1px;background:#18343d55;pointer-events:none}.dupr-chart-hover>b{position:absolute;width:12px;height:12px;border:3px solid #fff;border-radius:50%;background:#e85d3f;box-shadow:0 0 0 2px #18343d;transform:translate(-50%,-50%);pointer-events:none}.dupr-chart-hover>div{position:absolute;z-index:2;width:210px;padding:10px 12px;background:#18343d;color:#fff;border-radius:6px;box-shadow:0 5px 18px #0004;transform:translate(10px,calc(-100% - 10px));pointer-events:none}.dupr-chart-hover>div.dupr-tooltip-left{transform:translate(calc(-100% - 10px),calc(-100% - 10px))}.dupr-chart-hover strong,.dupr-chart-hover span,.dupr-chart-hover small{display:block}.dupr-chart-hover strong{font-size:15px}.dupr-chart-hover span{margin-top:2px;color:#dce5e7;font-size:11px}.dupr-chart-hover small{margin-top:6px;color:#fff;font-size:11px;line-height:1.35}
       #dupr-reopen{position:fixed;right:18px;bottom:18px;z-index:99998;border:0;border-radius:6px;background:#18343d;color:#fff;padding:11px 15px;font-weight:700;box-shadow:0 4px 16px #0003;cursor:pointer}
       @media(max-width:900px){.dupr-grid{grid-template-columns:1fr}.dupr-shell{padding:18px 14px 40px}}
       @media(max-width:1100px){.dupr-metrics{grid-template-columns:repeat(2,1fr)}.dupr-insights{grid-template-columns:1fr 1fr}.dupr-insight:nth-child(2){border-right:0}.dupr-insight:nth-child(-n+2){border-bottom:1px solid #e2e7e8}.dupr-insights-rating .dupr-insight:nth-child(2n){border-right:0}.dupr-insights-rating .dupr-insight:nth-child(-n+6){border-bottom:1px solid #e2e7e8}}
       @media(max-width:560px){.dupr-overview{grid-template-columns:1fr 1fr}.dupr-overview div:nth-child(2){border-right:0}.dupr-metrics{grid-template-columns:1fr 1fr}.dupr-charts{grid-template-columns:1fr}.dupr-section-title{align-items:start}}
-      @media print{body>*:not(#dupr-summary){display:none!important}#dupr-summary{position:static!important;overflow:visible!important;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.dupr-header,.dupr-tabs,#dupr-reopen,#dupr-analyse{display:none!important}.dupr-shell{max-width:none;padding:0}.dupr-panel{border:0;padding:0}.dupr-panel[hidden]{display:block!important}.dupr-panel+.dupr-panel{break-before:page}.dupr-overview,.dupr-section-title,.dupr-metrics,.dupr-insights,.dupr-charts,.dupr-events{break-inside:avoid}.dupr-insight{break-inside:avoid}.dupr-match-details{display:block!important;position:static!important;width:auto!important;margin-top:6px!important;padding:5px 0 0!important;background:none!important;color:#18343d!important;box-shadow:none!important;border-top:1px solid #dce3e4;border-radius:0!important}.dupr-match-details p{margin:0!important;line-height:1!important}.dupr-match-details p>span{display:inline!important;color:#52666d!important;font-size:8px!important;text-transform:uppercase;line-height:1!important}.dupr-match-details p>strong{display:inline!important;margin:0 0 0 4px!important;color:#18343d!important;font-size:9px!important;font-weight:600;line-height:1!important}}
+      @media print{body>*:not(#dupr-summary){display:none!important}#dupr-summary{position:static!important;overflow:visible!important;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.dupr-header,.dupr-tabs,#dupr-reopen,#dupr-analyse{display:none!important}.dupr-shell{max-width:none;padding:0}.dupr-panel{border:0;padding:0}.dupr-panel[hidden]{display:block!important}.dupr-panel+.dupr-panel{break-before:page}.dupr-overview,.dupr-section-title,.dupr-metrics,.dupr-insights,.dupr-charts,.dupr-events{break-inside:avoid}.dupr-insight{break-inside:avoid}.dupr-match-details{display:block!important;position:static!important;width:auto!important;margin-top:6px!important;padding:5px 0 0!important;background:none!important;color:#18343d!important;box-shadow:none!important;border-top:1px solid #dce3e4;border-radius:0!important}.dupr-match-details p{margin:0!important;line-height:1!important;color:#18343d!important;font-size:9px!important}.dupr-match-details .dupr-detail-title{font-weight:700!important}}
     `;
     const summary = document.createElement('div');
     summary.id = 'dupr-summary';
