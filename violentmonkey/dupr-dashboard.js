@@ -392,7 +392,7 @@
         .reduce((best, event) => !best || event.net < best.net ? event : best, null),
       avgGameMovement: mean(changed.map(match => Math.abs(match.delta))),
       gameMovementSamples: changed.length,
-      avgTourneyMovement: mean(eventList.filter(event => Number.isFinite(event.net)).map(event => event.net)),
+      avgTourneyMovement: mean(eventList.filter(event => Number.isFinite(event.net)).map(event => Math.abs(event.net))),
       tourneyMovementSamples: eventList.filter(event => Number.isFinite(event.net)).length,
       pointsFor: scored.reduce((sum, match) => sum + match.ownScore, 0),
       pointsAgainst: scored.reduce((sum, match) => sum + match.opponentScore, 0),
@@ -560,7 +560,7 @@
           ${insight('Peak rating', summary.peakRating?.rating.toFixed(3) || 'N/A', summary.peakRating)}
           ${insight('Lowest rating', summary.lowestRating?.rating.toFixed(3) || 'N/A', summary.lowestRating)}
           ${insight('Avg abs movement per game', Number.isFinite(summary.avgGameMovement) ? summary.avgGameMovement.toFixed(3) : 'N/A', summary.gameMovementSamples ? `across ${summary.gameMovementSamples} games` : '')}
-          ${insight('Avg movement per tournament', formatSigned(summary.avgTourneyMovement, 3), summary.tourneyMovementSamples ? `across ${summary.tourneyMovementSamples} tournaments` : '')}
+          ${insight('Avg abs movement per tournament', Number.isFinite(summary.avgTourneyMovement) ? summary.avgTourneyMovement.toFixed(3) : 'N/A', summary.tourneyMovementSamples ? `across ${summary.tourneyMovementSamples} tournaments` : '')}
           ${insight('Biggest single game gain', formatSigned(summary.biggestGain?.delta, 3), summary.biggestGain)}
           ${insight('Biggest single game loss', formatSigned(summary.biggestLoss?.delta, 3), summary.biggestLoss)}
           ${eventInsight('Biggest single tourney gain', formatSigned(summary.biggestTourneyGain?.net, 3), summary.biggestTourneyGain)}
