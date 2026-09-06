@@ -1,8 +1,8 @@
 /* ==UserStyle==
 @name         Force Atkinson Hyperlegible + Larger Text on ChatGPT
 @namespace    github.com/eeshanmalhotra/browser-scripts
-@version      1.1
-@description  Replace UI fonts with Atkinson Hyperlegible and increase font size slightly
+@version      1.2
+@description  Use Atkinson Hyperlegible for the UI, Source Code Pro for code, and increase font size slightly
 @author       Eeshan
 ==/UserStyle== */
 
@@ -17,7 +17,7 @@
 
     html,
     body,
-    *:not(code):not(pre):not(kbd):not(samp) {
+    *:not(code, code *, pre, pre *, kbd, kbd *, samp, samp *) {
         font-family:
             "Atkinson Hyperlegible",
             system-ui,
@@ -29,12 +29,24 @@
     kbd,
     samp {
         font-family:
+            "Source Code Pro",
             ui-monospace,
             SFMono-Regular,
             Menlo,
             Consolas,
             monospace !important;
         font-size: calc(100% - 1px);
+    }
+
+    code *,
+    pre * {
+        font-family:
+            "Source Code Pro",
+            ui-monospace,
+            SFMono-Regular,
+            Menlo,
+            Consolas,
+            monospace !important;
     }
 
     textarea,
@@ -46,7 +58,7 @@
             sans-serif !important;
     }
 
-    /* Keep code readable and proportional */
+    /* Keep code at the surrounding text size */
     pre,
     code {
         font-size: inherit !important;
