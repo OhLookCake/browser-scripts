@@ -1,0 +1,182 @@
+# LISTING
+alias lo='ls -oh'
+alias loh='ls -o'
+alias ll='ls -lah'
+alias la='ls -ah'
+# count entries: `lsl`, `lsl dir`, or `lsl foo/*/*.csv` (counts the matches)
+unalias lsl 2>/dev/null
+lsl() {
+  if [ "$#" -eq 0 ]; then
+    ls | wc -l | tr -d ' '
+  elif [ "$#" -eq 1 ] && [ -d "$1" ]; then
+    ls "$1" | wc -l | tr -d ' '
+  else
+    ls -d "$@" | wc -l | tr -d ' '
+  fi
+}
+
+# SUPERSHORT
+alias g='grep'
+alias q='exit'
+alias c='clear'
+alias h='history'
+alias cs='clear;ls'
+alias cls='clear;ls'
+alias bd='cd $OLDPWD'
+alias rmrf='rm -rf'
+alias rmfr='rm -rf'
+alias ..='cd ..'
+alias ...='cd ..; cd ..' # not the version with '/' to handle cases where you are less than n levels under root
+alias ....='cd ..; cd ..; cd ..'
+alias .....='cd ..; cd ..; cd ..; cd ..'
+
+# CONFUSING
+alias mktar='tar -cvf'
+alias untar='tar -xvf'
+
+# FILES
+alias zrc='vim ~/.zshrc'
+alias brc='vim ~/.bashrc'
+alias vrc='vim ~/.vimrc'
+alias al='vim ~/.aliases'
+alias sal='source ~/.aliases'
+
+# LOCATIONS
+alias pwdd='readlink -f .'
+alias desk='cd ~/Desktop'
+alias devv='cd ~/Dev'
+
+
+#TMUX
+alias tm='tmux'
+alias ta='tmux attach -t'
+alias tkill='tmux kill-session -t'
+alias tl='tmux ls | grep -n "^"'
+
+# attach to the nth session in the list: tn 1
+tn() {
+  local name
+  name="$(tmux ls -F '#{session_name}' | sed -n "${1}p")"
+  if [[ -z "$name" ]]; then
+    echo "tn: no session #${1}" >&2
+    tmux ls >&2
+    return 1
+  fi
+  tmux attach-session -t "$name"
+}
+alias t1='tn 1'
+alias t2='tn 2'
+alias t3='tn 3'
+alias t4='tn 4'
+alias t5='tn 5'
+alias t6='tn 6'
+alias t7='tn 7'
+alias t8='tn 8'
+alias t9='tn 9'
+
+# Start a new session with a given name: tnew foo
+tnew() { tmux new -s "$1"; }
+
+# SAFE PY3 MIGRATION
+alias py='python3'
+
+#VIRTUAL ENVIRONMENT
+alias ac='source bin/activate'
+alias deac='deactivate'
+mkvenv() {
+    local env_path="$HOME/Dev/Envs/$1"
+    python3 -m venv "$env_path"
+    source "$env_path/bin/activate"
+}
+alias mkv='mkvenv'
+
+# UV
+alias uvr='uv run'
+
+# MISC
+alias grep='grep --color'
+recy() { mkdir -p ~/Recycle && mv "$@" ~/Recycle/; }
+
+# cd with ls
+cc ()
+{
+ if [ -n "$1" ]; then
+   builtin cd "$@" && ls -oh
+ else
+   builtin cd ~ && ls -oh
+ fi
+}
+
+extract () {
+  if [ -f $1 ] ; then
+    case $1 in
+      *.tar.bz2)   tar xvjf $1    ;;
+      *.tar.gz)    tar xvzf $1    ;;
+      *.bz2)       bunzip2 $1     ;;
+      *.rar)       unrar x $1       ;;
+      *.gz)        gunzip $1      ;;
+      *.tar)       tar xvf $1     ;;
+      *.tbz2)      tar xvjf $1    ;;
+      *.tgz)       tar xvzf $1    ;;
+      *.zip)       unzip $1       ;;
+      *.Z)         uncompress $1  ;;
+      *.7z)        7z x $1        ;;
+      *)           echo "don't know how to extract '$1'..." ;;
+    esac
+  else
+    echo "'$1' is not a valid file!"
+  fi
+}
+
+# YT-DLP
+alias ytd='yt-dlp -f "bv*+ba/b" --merge-output-format mp4 --write-sub --write-auto-sub --sub-lang "en.*"'
+
+# SERVERS (on-demands, devvms, tab colors)
+source ~/.aliases_servers
+
+# CALENDAR
+alias meet='~/.myscripts/meetings.sh | mdless'
+
+
+# CLAUDE
+alias cl='claude'
+alias cld='claude --dangerously-skip-permissions'
+alias csj='vim ~/.claude/settings.json'
+
+# CODEX
+alias cod='codex --ask-for-approval never --sandbox danger-full-access'
+alias codexd='codex --ask-for-approval never --sandbox danger-full-access'
+
+# GIT
+gac() { git add -A && git commit -m "$*"; }
+gacp() { git add -A && git commit -m "$*" && git push; }
+alias gpom='git push origin main'
+
+alias ga='git add'
+alias gb='git branch'
+alias gc='git commit --verbose'
+alias gd='git diff'
+alias gf='git fetch'
+alias gg='git gui citool'
+alias gau='git add --update'
+alias gca='git commit --verbose --all'
+alias gcd='git checkout $(git_develop_branch)'
+alias gcm='git commit --message'
+alias gcn='git commit --verbose --no-edit'
+alias gco='git checkout'
+alias gds='git diff --staged'
+alias gfg='git ls-files | grep'
+alias gfo='git fetch origin'
+alias gl='git log'
+alias glg='git log --stat'
+alias glo='git log --oneline --decorate'
+alias gma='git merge --abort'
+alias gmc='git merge --continue'
+alias gpd='git push --dry-run'
+alias gpr='git pull --rebase'
+alias gpv='git push --verbose'
+alias grb='git rebase'
+alias grh='git reset'
+alias grm='git rm'
+alias gst='git status'
+
