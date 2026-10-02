@@ -1,0 +1,18 @@
+/* Tab group header: label (the coloured pill with the group name) */
+/*#tabbrowser-tabs[orient="vertical"] tab-group .tab-group-label {
+  height: 40px;
+}
+*/
+
+/* Tab group header: the container wrapping the label */
+#tabbrowser-tabs[orient="vertical"] tab-group .tab-group-label-container {
+  /*border-radius: 0px !important;*/
+  /*background-color: transparent !important;*/
+  height: 36px !important;
+  border-bottom: 1px solid var(--tab-group-color) !important;
+  /*border-bottom: 1px solid color-mix(in srgb, var(--tab-group-color) 80%, transparent)*/
+  margin-inline-start: 5px !important;  /* left side indent */
+  margin-block: 12px 0px !important;   /* vertical margin - top , bottom*/
+
+}
+

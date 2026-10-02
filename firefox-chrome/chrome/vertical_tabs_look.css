@@ -1,0 +1,93 @@
+/* Nova tabs (vertical): no outline, less rounding */
+
+.tabbrowser-tab {
+  --tab-selected-outline-color: transparent !important;
+  --tab-border-radius: 4px !important;
+}
+
+.tab-background {
+  border-radius: 0px !important;
+  /*box-shadow: 0px 0px 0px 1px #888888; !important;*/
+}
+
+.tab-background:is([selected], [multiselected]) {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 4px !important;
+  position: relative !important;
+}
+
+
+/* Tab Height */
+:root {
+    --tab-min-height: 32px !important;
+}
+
+.tabbrowser-tab {
+    height: 48px !important;
+}
+
+/*--------------*/
+
+/* Border around every vertical tab */
+#tabbrowser-tabs[orient="vertical"] .tab-background {
+  border-top: 0px !important;
+  border-left: 0px !important;
+  border-right: 0px !important;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent) !important;
+  border-radius: 0px;
+}
+
+/* Highlight the selected tab's border */
+#tabbrowser-tabs[orient="vertical"] .tab-background[selected] {
+  border-color: var(--focus-outline-color, #606060) !important;
+  border: 1px solid;
+}
+
+
+/*-------------------*/
+
+
+/* Sidebar container padding */
+#sidebar-main,
+#sidebar-main sidebar-main {
+  padding-inline: 0 !important;
+  margin-inline: 0 !important;
+}
+
+/* Tab spacing is driven by these variables in vertical mode */
+#tabbrowser-tabs[orient="vertical"],
+#sidebar-main {
+  --tab-inner-inline-margin: 0px !important;
+  --tab-inline-padding: 15px !important;
+  --space-small: 0px !important;
+}
+
+/* Scrollbox inside the arrowscrollbox's shadow DOM */
+/*#tabbrowser-arrowscrollbox[orient="vertical"]::part(scrollbox) {
+  padding-inline: 0 !important;
+}
+
+#tabbrowser-tabs[orient="vertical"] .tabbrowser-tab {
+  padding-inline: 0 !important;
+}*/
+
+
+/*-----------------*/
+
+/* Tab titles */
+#tabbrowser-tabs[orient="vertical"] .tab-label {
+  font-size: 14px !important;
+}
+
+/* Tab group header titles */
+#tabbrowser-tabs[orient="vertical"] tab-group .tab-group-label {
+  font-size: 12px !important;
+}
+
+
+
+
+
+

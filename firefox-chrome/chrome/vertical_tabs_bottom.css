@@ -1,0 +1,36 @@
+/* Gap between the last tab and the new tab button */
+#tabbrowser-tabs[orient="vertical"] #tabs-newtab-button,
+#tabbrowser-tabs[orient="vertical"] #vertical-tabs-newtab-button {
+  margin-block-start: 12px !important;
+}
+
+
+/* New tab button in vertical tabs */
+#tabbrowser-tabs[orient="vertical"] #tabs-newtab-button,
+#tabbrowser-tabs[orient="vertical"] #vertical-tabs-newtab-button {
+  border-radius: 0 !important;
+  height: 60px !important;
+  min-height: 60px !important;
+  max-height: 60px !important;
+  /*box-sizing: border-box !important;*/
+  /*justify-content: center !important;*/
+  /*text-align: center !important;*/
+  /*padding: 0 calc(50% - 50px) !important*/
+  font-size: 14px !important;
+
+}
+
+/*#tabbrowser-tabs[orient="vertical"] #tabs-newtab-button .toolbarbutton-text,
+#tabbrowser-tabs[orient="vertical"] #vertical-tabs-newtab-button .toolbarbutton-text {
+  text-align: center !important;
+  flex: 0 1 auto !important;
+}
+*/
+
+
+/* 20px margin before the icon/label */
+#tabbrowser-tabs[orient="vertical"] #tabs-newtab-button > .toolbarbutton-icon,
+#tabbrowser-tabs[orient="vertical"] #vertical-tabs-newtab-button > .toolbarbutton-icon {
+  margin-inline-start: calc(50% - 45px)!important;
+}
+
