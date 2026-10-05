@@ -124,14 +124,21 @@ javascript: (function () {
   }
 
   const input = prompt(
-    'Examples:\ntennis practice wed 1900 2h\nPark Run today 9.30am +90m\nDinner 9 pm',
+    'Examples:\ntennis practice wed 1900 2h\nPark Run today 9.30am +90m\nDinner 9 pm s',
   );
 
   if (!input) return;
 
+  // A trailing standalone "s" means the event should also be saved.
+  const trimmedInput = input.trim();
+  const shouldSave = /\ss$/i.test(trimmedInput);
+
   // Read the optional day, time, and duration from the end of the input.
   // Everything before those fields becomes the event title.
-  const parts = input.trim().split(/\s+/);
+  const eventInput = shouldSave
+    ? trimmedInput.replace(/\ss$/i, '')
+    : trimmedInput;
+  const parts = eventInput.split(/\s+/);
 
   let durationStr = null;
   const durationCandidate = parts[parts.length - 1];
@@ -181,5 +188,19 @@ javascript: (function () {
   const endTime = formatDateTime(endDate);
   const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${startTime}/${endTime}`;
 
-  window.open(url, '_blank');
+  const calendarWindow = window.open(url, '_blank');
+
+  if (shouldSave && calendarWindow) {
+    setTimeout(() => {
+      const buttons = calendarWindow.document.querySelectorAll(
+        'button, [role="button"]',
+      );
+      const saveButton = Array.from(buttons).find((button) => {
+        const label = button.getAttribute('aria-label') || button.textContent;
+        return label?.trim().toLowerCase() === 'save';
+      });
+
+      saveButton?.click();
+    }, 500);
+  }
 })();
