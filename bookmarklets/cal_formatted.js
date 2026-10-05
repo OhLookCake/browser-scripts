@@ -8,8 +8,11 @@ javascript: (function () {
       .join(' ');
   }
 
-  // Find the next occurrence of a named weekday. If it is today, use next week.
-  function getNextWeekday(dayName) {
+  // Use today, or find the next occurrence of a named weekday.
+  // If the named weekday is today, use next week.
+  function getEventDate(dayName = 'today') {
+    if (dayName.toLowerCase() === 'today') return new Date();
+
     const days = {
       sun: 0,
       sunday: 0,
@@ -41,7 +44,7 @@ javascript: (function () {
     return targetDate;
   }
 
-  // Parse compact times such as 1900, or clock times such as 9.30am and 9:30.
+  // Parse compact times such as 1900, or clock times such as 9, 9.30am and 9:30.
   function parseTime(timeStr) {
     timeStr = timeStr.trim().toLowerCase().replace('.', ':');
 
@@ -65,6 +68,20 @@ javascript: (function () {
       }
 
       return { hours, minutes };
+    }
+
+    return null;
+  }
+
+  // A period may be attached to the time or separated by a space.
+  function getTrailingTime(parts) {
+    if (parts.length >= 2 && /^(am|pm)$/i.test(parts[parts.length - 1])) {
+      const timeStr = `${parts[parts.length - 2]} ${parts[parts.length - 1]}`;
+      if (parseTime(timeStr)) return { timeStr, tokenCount: 2 };
+    }
+
+    if (parts.length >= 1 && parseTime(parts[parts.length - 1])) {
+      return { timeStr: parts[parts.length - 1], tokenCount: 1 };
     }
 
     return null;
@@ -107,41 +124,46 @@ javascript: (function () {
   }
 
   const input = prompt(
-    'Examples:\ntennis practice wed 1900 2h\nPark Run saturday 9.30am +90m',
+    'Examples:\ntennis practice wed 1900 2h\nPark Run today 9.30am +90m\nDinner 9 pm',
   );
 
   if (!input) return;
 
-  // Read the day, time, and optional duration from the end of the input.
+  // Read the optional day, time, and duration from the end of the input.
   // Everything before those fields becomes the event title.
   const parts = input.trim().split(/\s+/);
 
-  if (parts.length < 3) {
-    alert("Use: 'event day time [duration]'");
-    return;
-  }
-
   let durationStr = null;
-  if (/^\+?\d+(\.\d+)?[mh]?$/i.test(parts[parts.length - 1])) {
+  const durationCandidate = parts[parts.length - 1];
+  if (
+    /^\+?\d+(\.\d+)?[mh]?$/i.test(durationCandidate) &&
+    getTrailingTime(parts.slice(0, -1))
+  ) {
     durationStr = parts.pop();
   }
 
-  const timeStr = parts.pop();
-  const dayStr = parts.pop();
-  const eventTitle = toTitleCase(parts.join(' '));
-  const eventDate = getNextWeekday(dayStr);
-
-  if (!eventDate) {
-    alert('Invalid day');
-    return;
-  }
-
-  const timeInfo = parseTime(timeStr);
-
-  if (!timeInfo) {
+  const trailingTime = getTrailingTime(parts);
+  if (!trailingTime) {
     alert('Invalid time');
     return;
   }
+
+  parts.splice(-trailingTime.tokenCount);
+
+  let eventDate = getEventDate();
+  const explicitDate = getEventDate(parts[parts.length - 1]);
+  if (explicitDate) {
+    eventDate = explicitDate;
+    parts.pop();
+  }
+
+  const eventTitle = toTitleCase(parts.join(' '));
+  if (!eventTitle) {
+    alert("Use: 'event [day] time [duration]'");
+    return;
+  }
+
+  const timeInfo = parseTime(trailingTime.timeStr);
 
   const durationMinutes = parseDuration(durationStr);
 
