@@ -21,7 +21,8 @@
 /*.tab-text.tab-label{ font-size: 14px; }*/
 
 
-@import url(chrome/vertical_tabs_spacing.css);
-@import url(chrome/vertical_tabs_look.css);
-@import url(chrome/vertical_tab_groups.css);
-@import url(chrome/vertical_tabs_bottom.css);
+@import url(chrome/tab_spacing.css);
+@import url(chrome/tab_look.css);
+@import url(chrome/tab_groups.css);
+@import url(chrome/new_tab_button.css);
+@import url(chrome/container_tabs.css);
