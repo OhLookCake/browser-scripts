@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BBC iPlayer Wide Player
 // @namespace    github.com/ohlookcake/browser-scripts
-// @version      1.1.0
+// @version      1.1.1
 // @description  Widen the video to 95% of the viewport and match its playback controls
 // @match        https://www.bbc.co.uk/iplayer/*
 // @grant        none
@@ -11,22 +11,23 @@
 (() => {
     'use strict';
 
+    // Widen the theatre itself so BBC's overlay bounds match the video.
+    // Widening only its gel-wrap leaves the capped parent behind.
     const pageStyle = document.createElement('style');
     pageStyle.textContent = `
-        #tviplayer .hero-player__theatre > .gel-wrap {
+        #tviplayer .hero-player__theatre {
             box-sizing: border-box !important;
             width: 95vw !important;
             max-width: none !important;
             margin-inline: auto !important;
             padding-inline: 0 !important;
         }
-        #tviplayer .hero-player__player,
-        #tviplayer .hero-player__smp,
-        #tviplayer .player,
-        #tviplayer .player__container {
+        #tviplayer .hero-player__theatre > .gel-wrap {
+            box-sizing: border-box !important;
             width: 100% !important;
             max-width: none !important;
             margin-inline: auto !important;
+            padding-inline: 0 !important;
         }
     `;
     (document.head || document.documentElement).append(pageStyle);
