@@ -1,0 +1,58 @@
+/* ==UserStyle==
+@name           Channel 4 — Centered 98% Width Video Player
+@namespace      local.channel4.wide-video
+@version        1.1.0
+@description    Center the Channel 4 programme player at 98% of the viewport width with a 16:9 video area.
+@author         ohlookcake
+==/UserStyle== */
+
+/* Applies to channel4.com and its subdomains through Stylus domain matching. */
+@-moz-document domain("channel4.com") {
+    /* Center the wide outer wrapper even when its parent is narrower.
+       Apply the viewport width only here; inner layers fill this wrapper. */
+    #html5-player-wrapper {
+        position: relative !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+        width: 98vw !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        height: calc(98vw * 9 / 16) !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    #html5-player-placeholder,
+    #html5-player-parent,
+    #html5-player,
+    .player__video__app,
+    .player__video__container {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Center the picture inside the 16:9 area without cropping it.
+       Bars encoded in the video itself may still remain. */
+    video.vod-player {
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        object-fit: contain !important;
+        object-position: center center !important;
+    }
+}
