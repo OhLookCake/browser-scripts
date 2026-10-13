@@ -1,13 +1,37 @@
 /* ==UserStyle==
 @name           Channel 4 — Centered 98% Width Video Player
 @namespace      local.channel4.wide-video
-@version        1.1.0
+@version        1.1.3
 @description    Center the Channel 4 programme player at 98% of the viewport width with a 16:9 video area.
 @author         ohlookcake
 ==/UserStyle== */
 
 /* Applies to channel4.com and its subdomains through Stylus domain matching. */
 @-moz-document domain("channel4.com") {
+    /* Channel 4 reserves the original video height as padding above the
+       title. Our player now occupies that space in normal document flow. */
+    .all4-brandhubs-header-v2:has(#html5-player-placeholder.all4-brandhubs-header-v2__player--active)
+    + .all4-brandhubs-details__content-wrapper--episode
+    .all4-brandhubs-details__title-logo-wrapper {
+        padding-top: 24px !important;
+    }
+
+    /* Let the page header follow the player's actual height instead of
+       reserving a separate hero/poster area above the programme details. */
+    .all4-brandhubs-header-v2:has(#html5-player-placeholder.all4-brandhubs-header-v2__player--active) {
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        margin-bottom: 0 !important;
+    }
+
+    .all4-brandhubs-header-v2:has(#html5-player-placeholder.all4-brandhubs-header-v2__player--active)
+    > .all4-brandhubs-header-v2__image-pane--container--hidden {
+        display: none !important;
+    }
+
     /* Center the wide outer wrapper even when its parent is narrower.
        Apply the viewport width only here; inner layers fill this wrapper. */
     #html5-player-wrapper {
@@ -40,6 +64,25 @@
         margin-left: auto !important;
         margin-right: auto !important;
         box-sizing: border-box !important;
+    }
+
+    /* These layers can reserve space using aspect-ratio padding.
+       Their explicit heights above already provide the required space. */
+    #html5-player-wrapper,
+    #html5-player-placeholder,
+    #html5-player-parent,
+    #html5-player {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+
+    /* Keep the active player in normal flow so its parent can size to it. */
+    #html5-player-placeholder.all4-brandhubs-header-v2__player--active {
+        position: relative !important;
+        top: auto !important;
+        bottom: auto !important;
     }
 
     /* Center the picture inside the 16:9 area without cropping it.
