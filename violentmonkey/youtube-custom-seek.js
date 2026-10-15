@@ -102,3 +102,25 @@
 //     }, true);
 
 // })();
+
+// Fire TV remote: F18/F19 seek only a visible, playing YouTube video.
+(function () {
+    'use strict';
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'F18' && e.key !== 'F19') return;
+        if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+        if (document.visibilityState !== 'visible' || !document.hasFocus()) return;
+        const active = document.activeElement;
+        if (active && (active.matches('input, textarea, select') || active.isContentEditable)) return;
+        const video = document.querySelector('#movie_player video') || document.querySelector('video');
+        if (!video || video.paused || video.ended || video.readyState < 2) return;
+        const box = video.getBoundingClientRect();
+        if (box.width <= 0 || box.height <= 0 || box.bottom <= 0 || box.top >= innerHeight || box.right <= 0 || box.left >= innerWidth) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (e.repeat) return;
+        const offset = e.key === 'F18' ? -3 : 3;
+        const end = Number.isFinite(video.duration) ? video.duration : Infinity;
+        video.currentTime = Math.max(0, Math.min(end, video.currentTime + offset));
+    }, true);
+})();
