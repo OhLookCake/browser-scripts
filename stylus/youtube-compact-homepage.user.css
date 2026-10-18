@@ -1,0 +1,67 @@
+/* ==UserStyle==
+@name         YouTube Compact Homepage
+@namespace    user
+@version      1.0.0
+@description  Converts YouTube homepage grid to a compact horizontal list layout with hover expansion.
+@author       eeshan
+==/UserStyle== */
+@-moz-document url("https://youtube.com"),
+url("https://youtube.com/"),
+url("https://www.youtube.com"),
+url("https://www.youtube.com/") {
+	:root {
+		--thumb-width: 150px;
+		--hover-width: 300px;
+		--content-margin: 12px;
+	}
+	
+	
+	/* 0. Get rid of gutters */
+ 	#contents.ytd-rich-grid-renderer {
+		width: 100% !important;
+		margin-left: 0 !important;
+		margin-right: 0 !important;
+	}
+
+	
+	/* 1. Set container to flex row */
+	.yt-lockup-view-model.yt-lockup-view-model--vertical {
+		display: flex !important;
+		flex-direction: row !important;
+		align-items: flex-start !important;
+		position: relative;
+	}
+
+	/* 2. Set thumbnail width */
+	.yt-lockup-view-model__content-image {
+		flex: 0 0 var(--thumb-width) !important;
+		width: var(--thumb-width) !important;
+		min-width: var(--thumb-width) !important;
+	}
+
+	/* 3. Hide avatar */
+	.yt-lockup-metadata-view-model__avatar {
+		display: none !important;
+	}
+
+	/* 4. Add margin between thumb and metadata */
+	.yt-lockup-view-model__metadata {
+		margin-left: var(--content-margin) !important;
+		flex: 1;
+	}
+
+	/* 5. Hover expansion and overlay
+.yt-lockup-view-model:hover .yt-lockup-view-model__content-image {
+    position: absolute;
+    z-index: 9999;
+    width: var(--hover-width) !important;
+    min-width: var(--hover-width) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+*/
+	/* Fix for rich-grid layout to prevent horizontal overflow in the 3-column constraint */
+	ytd-rich-item-renderer {
+		margin-bottom: 16px !important;
+	}
+}
