@@ -56,22 +56,33 @@
   margin-inline: 0 !important;
 }
 
-/* Tab spacing is driven by these variables in vertical mode */
+/* Preserve the existing vertical spacing. */
 #tabbrowser-tabs[orient="vertical"],
 #sidebar-main {
-  --tab-inner-inline-margin: 0px !important;
-  --tab-inline-padding: 15px !important;
   --space-small: 0px !important;
 }
 
-/* Scrollbox inside the arrowscrollbox's shadow DOM */
-/*#tabbrowser-arrowscrollbox[orient="vertical"]::part(scrollbox) {
+/* Expanded vertical tabs: 6px left / 4px right outer margins, 6px inside.
+   Keep collapsed mode's icon sizing and centering intact. */
+#tabbrowser-tabs[orient="vertical"][expanded] {
+  --tab-margin-inline-inner: 5px !important;
+  --tab-margin-inline-pinned-expanded: 5px !important;
+  --tab-container-margin-inline-pinned-expanded: 0px !important;
+  --tab-padding-inline: 11px !important;
+}
+
+#tabbrowser-tabs[orient="vertical"][expanded] .tabbrowser-tab {
   padding-inline: 0 !important;
 }
 
-#tabbrowser-tabs[orient="vertical"] .tabbrowser-tab {
-  padding-inline: 0 !important;
-}*/
+#tabbrowser-tabs[orient="vertical"][expanded] .tab-background {
+  margin-inline: 6px 4px !important;
+}
+
+#tabbrowser-tabs[orient="vertical"][expanded] .tab-content {
+  /* Include the outer margins so each background retains 6px inside. */
+  padding-inline: 12px 10px !important;
+}
 
 
 /*-----------------*/
