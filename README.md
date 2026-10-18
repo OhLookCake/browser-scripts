@@ -14,6 +14,10 @@ Backup of my browser customizations, bookmarklets, app settings, and shell/edito
 | [dotfiles/](dotfiles/) | Shell, Vim, tmux | Copy the desired files to your home directory, merging with existing settings as needed. |
 | [misc/](misc/) | Sidebery custom CSS | Paste `sideberry.css` into Sidebery's custom styles editor. |
 
+## Channel 4 keyboard shortcuts
+
+Install [Channel 4 JKL Shortcuts](violentmonkey/channel4-video-keyboard-shortcuts.user.js) using the Violentmonkey restore steps above, then reload Channel 4. **J** rewinds 10 seconds, **K** toggles play/pause, and **L** skips forward 10 seconds. Shortcuts ignore text fields and Ctrl/Alt/Command combinations. Change `SEEK_SECONDS` in the script to adjust the jump size.
+
 
 ## Firefox interface styles
 
