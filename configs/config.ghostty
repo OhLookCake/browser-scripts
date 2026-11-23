@@ -1,0 +1,47 @@
+# Typography. Ghostty adjustments are relative changes to native font metrics.
+font-family = Roboto Mono for Powerline
+font-size = 20
+
+# Exact RGB values from the active profile (not a similar bundled theme).
+palette = 0=#000000
+palette = 1=#e8341c
+palette = 2=#68c256
+palette = 3=#f2d42c
+palette = 4=#1c98e8
+palette = 5=#8e69c9
+palette = 6=#1c98e8
+palette = 7=#bababa
+palette = 8=#000000
+palette = 9=#e05a4f
+palette = 10=#77b869
+palette = 11=#efd64b
+palette = 12=#387cd3
+palette = 13=#957bbe
+palette = 14=#3d97e2
+palette = 15=#bababa
+
+# Use a steady line cursor, including inside Herdr.
+cursor-style = bar
+cursor-style-blink = false
+
+# Profile's initial grid and reuse-current-directory policy.
+working-directory = home
+window-inherit-working-directory = true
+tab-inherit-working-directory = true
+split-inherit-working-directory = true
+
+# Session, terminal, and mouse behavior.
+scrollback-limit-lines = 10000
+## confirm-close-surface = false
+## wait-after-command = false
+## term = xterm-256color
+## mouse-reporting = true
+## macos-option-as-alt = false
+
+# iTerm2 allows sound and visual alerts, without a flashing terminal.
+bell-features = system,no-audio,attention,title,no-border
+
+
+# Add Cmd+K to use in herdr
+keybind = cmd+k=text:\x1b[107;7u
+
